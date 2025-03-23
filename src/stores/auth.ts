@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { auth } from '../services/auth'
 import type { User } from '../types/supabase'
 import type { Session } from '@supabase/supabase-js'
@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const initializationAttempted = ref(false)
   const isLoggedIn = computed(() => !!user.value)
 
   // Initialize the store with the current user
@@ -16,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const { data, error: sessionError } = await auth.getSession()
+      console.log('Auth store initialization - session data:', data.session ? 'Session exists' : 'No session')
       if (sessionError) throw sessionError
 
       if (data.session?.user) {
@@ -26,11 +28,14 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         user.value = null
       }
+      initializationAttempted.value = true
+      return true
     } catch (err) {
       console.error('Failed to initialize auth store:', err)
       user.value = null
+      initializationAttempted.value = true
+      return false
     } finally {
-      loading.value = false
     }
   }
 
@@ -174,6 +179,25 @@ export const useAuthStore = defineStore('auth', () => {
   // Initialize auth listener
   setupAuthListener()
 
+  // Add a recovery mechanism for failed initialization
+  const recoverFromFailedInit = async () => {
+    console.log('Attempting to recover from failed initialization...')
+    try {
+      // Clear any potentially corrupted auth state
+      localStorage.removeItem('supabase.auth.token')
+      
+      // Try to initialize again
+      await initialize()
+      console.log('Recovery successful')
+    } catch (err) {
+      console.error('Recovery failed:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  watch(loading, (isLoading) => console.log('Auth store loading state changed:', isLoading))
+
   return {
     user,
     loading,
@@ -187,5 +211,8 @@ export const useAuthStore = defineStore('auth', () => {
     resetPassword,
     updatePassword,
     cleanupAuthListener
+,
+    initializationAttempted,
+    recoverFromFailedInit
   }
 })

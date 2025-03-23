@@ -138,7 +138,7 @@ router.beforeEach(async (to, from, next) => {
   // Set document title
   document.title = `${to.meta.title || 'Bakers Dozen'} - Inventory Management`
 
-  console.log('Router guard: Checking authentication for route', to.path)
+  console.log(`Router guard: Checking authentication for route ${to.path} (from: ${from.path})`)
 
   // Initialize auth store if not already done
   const authStore = useAuthStore()
@@ -147,10 +147,19 @@ router.beforeEach(async (to, from, next) => {
     // Always initialize the auth store to ensure we have the latest auth state
     await authStore.initialize()
     
-    console.log('Auth state after initialization:', {
+    console.log(`Auth state for route ${to.path}:`, {
       user: authStore.user ? 'User exists' : 'No user',
-      isLoggedIn: authStore.isLoggedIn
+      isLoggedIn: authStore.isLoggedIn,
+      loading: authStore.loading
     })
+    
+    // If initialization is still loading, wait a bit and try again
+    if (authStore.loading) {
+      console.log('Auth store still loading, waiting...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+      // Set loading to false to prevent infinite loading state
+      authStore.loading = false
+    }
 
     // Check if route requires authentication
     if (to.matched.some((record) => record.meta.requiresAuth)) {
@@ -187,13 +196,34 @@ router.beforeEach(async (to, from, next) => {
     console.log('Proceeding to route', to.path)
     next()
   } catch (error) {
-    console.error('Error in router guard:', error)
+    console.error(`Error in router guard for route ${to.path}:`, error)
     
-    // If there's an error, redirect to login page
-    if (to.name !== 'login') {
-      next({ name: 'login' })
-    } else {
+    // Attempt recovery
+    try {
+      console.log('Attempting to recover from router guard error...')
+      
+      // Try to recover from failed initialization
+      await authStore.recoverFromFailedInit()
+      
+      // If we're not going to login already, and recovery didn't work, redirect to login
+      if (to.name !== 'login' && !authStore.isLoggedIn) {
+        console.log('Recovery unsuccessful, redirecting to login')
+        next({ name: 'login' })
+        return
+      }
+      
+      // If recovery worked, proceed to the route
+      console.log('Recovery successful, proceeding to route')
       next()
+    } catch (recoveryError) {
+      console.error('Recovery failed:', recoveryError)
+    
+      // If recovery failed and we're not already going to login, redirect to login
+      if (to.name !== 'login') {
+        next({ name: 'login' })
+      } else {
+        next()
+      }
     }
   }
 })

@@ -17,6 +17,38 @@ export type SubscriptionCallback = (table: TableName, action: Action, item: any)
 let nextSubscriptionId = 1
 const subscriptions: Record<number, SubscriptionCallback> = {}
 
+// Cache management
+const CACHE_VERSION = '1.0.0'
+const CACHE_PREFIX = 'bakersDozen_'
+
+// Helper function to get cache key with version
+const getCacheKey = (key: string): string => {
+  return `${CACHE_PREFIX}${key}_v${CACHE_VERSION}`
+}
+
+// Helper function to safely parse cached data
+const safelyParseCachedData = (cacheKey: string): any | null => {
+  try {
+    const cachedData = localStorage.getItem(cacheKey)
+    if (!cachedData) return null
+    return JSON.parse(cachedData)
+  } catch (error) {
+    console.error(`Error parsing cached data for ${cacheKey}:`, error)
+    // If there's an error parsing, remove the corrupted data
+    localStorage.removeItem(cacheKey)
+    return null
+  }
+}
+
+// Helper function to safely store data in cache
+const safelyStoreCachedData = (cacheKey: string, data: any): void => {
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(data))
+  } catch (error) {
+    console.error(`Error storing data in cache for ${cacheKey}:`, error)
+  }
+}
+
 // Database service
 export const db = {
   // Get all records from a table
@@ -28,10 +60,18 @@ export const db = {
       if (!getConnectionStatus()) {
         console.log(`Offline mode: returning cached data for ${table}`)
         // Return cached data if available
-        const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-        if (cachedData) {
-          return JSON.parse(cachedData)
+        const cacheKey = getCacheKey(table)
+        const parsedData = safelyParseCachedData(cacheKey)
+        if (parsedData) {
+          return parsedData
         }
+        
+        // Try legacy cache key as fallback
+        const legacyData = safelyParseCachedData(`${CACHE_PREFIX}${table}`)
+        if (legacyData) {
+          return legacyData
+        }
+        
         return []
       }
       
@@ -46,19 +86,28 @@ export const db = {
       
       console.log(`Successfully fetched ${data?.length || 0} records from ${table}`)
       
-      // Cache the data
-      localStorage.setItem(`bakersDozen_${table}`, JSON.stringify(data))
+      // Cache the data with versioned key
+      const cacheKey = getCacheKey(table)
+      safelyStoreCachedData(cacheKey, data)
       
       return data as Tables[T]['Row'][]
     } catch (error) {
       console.error(`Error fetching all records from ${table}:`, error)
       
       // Return cached data if available
-      const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-      if (cachedData) {
-        const parsedData = JSON.parse(cachedData)
+      const cacheKey = getCacheKey(table)
+      const parsedData = safelyParseCachedData(cacheKey)
+      if (parsedData) {
         console.log(`Returning ${parsedData.length} cached records for ${table}`)
         return parsedData
+      }
+      
+      // Try legacy cache key as fallback
+      const legacyKey = `${CACHE_PREFIX}${table}`
+      const legacyData = safelyParseCachedData(legacyKey)
+      if (legacyData) {
+        console.log(`Returning ${legacyData.length} legacy cached records for ${table}`)
+        return legacyData
       }
       
       console.log(`No cached data available for ${table}, returning empty array`)
@@ -75,9 +124,9 @@ export const db = {
       if (!getConnectionStatus()) {
         console.log(`Offline mode: looking for cached record with ID ${id} in ${table}`)
         // Try to find in cached data
-        const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-        if (cachedData) {
-          const items = JSON.parse(cachedData)
+        const cacheKey = getCacheKey(table)
+        const items = safelyParseCachedData(cacheKey)
+        if (items) {
           const item = items.find((item: any) => item.id === id)
           if (item) {
             console.log(`Found cached record with ID ${id} in ${table}`)
@@ -86,6 +135,14 @@ export const db = {
           }
           return item || null
         }
+        
+        // Try legacy cache
+        const legacyKey = `${CACHE_PREFIX}${table}`
+        const legacyItems = safelyParseCachedData(legacyKey)
+        if (legacyItems) {
+          return legacyItems.find((item: any) => item.id === id) || null
+        }
+        
         return null
       }
       
@@ -110,10 +167,17 @@ export const db = {
       console.error(`Error fetching record by ID from ${table}:`, error)
       
       // Try to find in cached data
-      const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-      if (cachedData) {
-        const items = JSON.parse(cachedData)
+      const cacheKey = getCacheKey(table)
+      const items = safelyParseCachedData(cacheKey)
+      if (items) {
         return items.find((item: any) => item.id === id) || null
+      }
+      
+      // Try legacy cache
+      const legacyKey = `${CACHE_PREFIX}${table}`
+      const legacyItems = safelyParseCachedData(legacyKey)
+      if (legacyItems) {
+        return legacyItems.find((item: any) => item.id === id) || null
       }
       
       return null
@@ -164,11 +228,17 @@ export const db = {
       console.log(`Successfully inserted record into ${table} with ID ${data.id}`)
       
       // Update cache
-      const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-      if (cachedData) {
-        const items = JSON.parse(cachedData)
-        items.push(data)
-        localStorage.setItem(`bakersDozen_${table}`, JSON.stringify(items))
+      const cacheKey = getCacheKey(table)
+      const items = safelyParseCachedData(cacheKey) || []
+      items.push(data)
+      safelyStoreCachedData(cacheKey, items)
+      
+      // Update legacy cache if it exists
+      const legacyKey = `${CACHE_PREFIX}${table}`
+      const legacyItems = safelyParseCachedData(legacyKey)
+      if (legacyItems) {
+        legacyItems.push(data)
+        safelyStoreCachedData(legacyKey, legacyItems)
       }
       
       // Notify subscribers
@@ -206,13 +276,24 @@ export const db = {
       console.log(`Successfully updated record in ${table} with ID ${record.id}`)
       
       // Update cache
-      const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-      if (cachedData) {
-        const items = JSON.parse(cachedData)
+      const cacheKey = getCacheKey(table)
+      const items = safelyParseCachedData(cacheKey)
+      if (items) {
         const index = items.findIndex((item: any) => item.id === record.id)
         if (index !== -1) {
-          items[index] = { ...items[index], ...record }
-          localStorage.setItem(`bakersDozen_${table}`, JSON.stringify(items))
+          items[index] = { ...items[index], ...data }
+          safelyStoreCachedData(cacheKey, items)
+        }
+      }
+      
+      // Update legacy cache if it exists
+      const legacyKey = `${CACHE_PREFIX}${table}`
+      const legacyItems = safelyParseCachedData(legacyKey)
+      if (legacyItems) {
+        const index = legacyItems.findIndex((item: any) => item.id === record.id)
+        if (index !== -1) {
+          legacyItems[index] = { ...legacyItems[index], ...data }
+          safelyStoreCachedData(legacyKey, legacyItems)
         }
       }
       
@@ -257,11 +338,19 @@ export const db = {
       console.log(`Successfully deleted record from ${table} with ID ${id}`)
       
       // Update cache
-      const cachedData = localStorage.getItem(`bakersDozen_${table}`)
-      if (cachedData) {
-        const items = JSON.parse(cachedData)
+      const cacheKey = getCacheKey(table)
+      const items = safelyParseCachedData(cacheKey)
+      if (items) {
         const filteredItems = items.filter((item: any) => item.id !== id)
-        localStorage.setItem(`bakersDozen_${table}`, JSON.stringify(filteredItems))
+        safelyStoreCachedData(cacheKey, filteredItems)
+      }
+      
+      // Update legacy cache if it exists
+      const legacyKey = `${CACHE_PREFIX}${table}`
+      const legacyItems = safelyParseCachedData(legacyKey)
+      if (legacyItems) {
+        const filteredItems = legacyItems.filter((item: any) => item.id !== id)
+        safelyStoreCachedData(legacyKey, filteredItems)
       }
       
       // Notify subscribers
@@ -283,10 +372,19 @@ export const db = {
       if (!getConnectionStatus()) {
         console.log(`Offline mode: returning cached data for view ${view}`)
         // Return cached data if available
-        const cachedData = localStorage.getItem(`bakersDozen_view_${view}`)
-        if (cachedData) {
-          return JSON.parse(cachedData)
+        const cacheKey = getCacheKey(`view_${view}`)
+        const parsedData = safelyParseCachedData(cacheKey)
+        if (parsedData) {
+          return parsedData
         }
+        
+        // Try legacy cache
+        const legacyKey = `${CACHE_PREFIX}view_${view}`
+        const legacyData = safelyParseCachedData(legacyKey)
+        if (legacyData) {
+          return legacyData
+        }
+        
         return []
       }
       
@@ -302,16 +400,25 @@ export const db = {
       console.log(`Successfully fetched ${data?.length || 0} records from view ${view}`)
       
       // Cache the data
-      localStorage.setItem(`bakersDozen_view_${view}`, JSON.stringify(data))
+      const cacheKey = getCacheKey(`view_${view}`)
+      safelyStoreCachedData(cacheKey, data)
       
       return data as Views[T]['Row'][]
     } catch (error) {
       console.error(`Error fetching data from view ${view}:`, error)
       
       // Return cached data if available
-      const cachedData = localStorage.getItem(`bakersDozen_view_${view}`)
-      if (cachedData) {
-        return JSON.parse(cachedData)
+      const cacheKey = getCacheKey(`view_${view}`)
+      const parsedData = safelyParseCachedData(cacheKey)
+      if (parsedData) {
+        return parsedData
+      }
+      
+      // Try legacy cache
+      const legacyKey = `${CACHE_PREFIX}view_${view}`
+      const legacyData = safelyParseCachedData(legacyKey)
+      if (legacyData) {
+        return legacyData
       }
       
       return []
@@ -389,6 +496,17 @@ export const db = {
     return uuidv4()
   },
   
+  // Clear specific table cache
+  clearTableCache(table: TableName | ViewName): void {
+    console.log(`Clearing cache for ${table}...`)
+    
+    // Clear both versioned and legacy cache keys
+    localStorage.removeItem(`${CACHE_PREFIX}${table}`)
+    localStorage.removeItem(getCacheKey(table))
+    localStorage.removeItem(getCacheKey(`view_${table}`))
+    localStorage.removeItem(`${CACHE_PREFIX}view_${table}`)
+  },
+  
   // Clear cache for testing
   clearCache(): void {
     console.log('Clearing all cached data...')
@@ -398,7 +516,7 @@ export const db = {
     ]
     
     tables.forEach(table => {
-      localStorage.removeItem(`bakersDozen_${table}`)
+      this.clearTableCache(table)
     })
     
     const views: ViewName[] = [
@@ -406,7 +524,7 @@ export const db = {
     ]
     
     views.forEach(view => {
-      localStorage.removeItem(`bakersDozen_view_${view}`)
+      this.clearTableCache(view)
     })
     
     console.log('Cache cleared')

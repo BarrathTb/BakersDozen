@@ -2,19 +2,22 @@
   <v-app :theme="themeStore.currentTheme" class="app-container">
     <router-view />
     <pwa-install-prompt />
+    <app-error-recovery ref="errorRecovery" @recovery-performed="handleRecovery" />
   </v-app>
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, watch } from 'vue'
+import { defineComponent, onMounted, watch, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
+import { detectCacheCorruption } from './utils/cache-recovery'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
+import AppErrorRecovery from './components/AppErrorRecovery.vue'
 
 export default defineComponent({
   name: 'App',
   components: {
-    PwaInstallPrompt
+    PwaInstallPrompt, AppErrorRecovery
   },
   
   setup() {
@@ -27,10 +30,34 @@ export default defineComponent({
       
       // Initialize auth store
       authStore.initialize()
+        .catch(error => {
+          console.error('Error initializing auth store:', error)
+          // This might be a good time to show the recovery dialog
+          showErrorRecoveryIfNeeded()
+        })
+      
+      // Check for cache corruption
+      if (detectCacheCorruption()) {
+        console.warn('Cache corruption detected on app mount')
+        showErrorRecoveryIfNeeded()
+      }
     })
+    
+    // Reference to the error recovery component
+    const errorRecovery = ref<InstanceType<typeof AppErrorRecovery> | null>(null)
+    
+    // Show error recovery dialog if needed
+    const showErrorRecoveryIfNeeded = () => {
+      if (errorRecovery.value) {
+        errorRecovery.value.showRecoveryDialog()
+      }
+    }
+    
+    // Handle recovery performed
+    const handleRecovery = () => console.log('Recovery performed')
 
     return {
-      themeStore
+      themeStore, errorRecovery, handleRecovery
     }
   }
 })
