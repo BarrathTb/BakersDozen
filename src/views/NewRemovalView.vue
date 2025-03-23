@@ -4,7 +4,7 @@
     
     <v-card>
       <v-card-title>
-        <v-icon left>mdi-minus-circle</v-icon>
+        <v-icon start>mdi-minus-circle</v-icon>
         Record Ingredient Removal
       </v-card-title>
       
@@ -25,28 +25,25 @@
             </v-col>
             <v-col cols="12" md="6">
               <v-menu
-                ref="removalDateMenu"
                 v-model="removalDateMenu"
                 :close-on-content-click="false"
                 transition="scale-transition"
-                offset-y
                 min-width="auto"
               >
-                <template v-slot:activator="{ on, attrs }">
+                <template v-slot:activator="{ props }">
                   <v-text-field
                     v-model="removalDate"
                     label="Removal Date"
                     prepend-icon="mdi-calendar"
                     readonly
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     :rules="[v => !!v || 'Removal date is required']"
                     required
                   ></v-text-field>
                 </template>
                 <v-date-picker
                   v-model="removalDate"
-                  @input="removalDateMenu = false"
+                  @update:model-value="removalDateMenu = false"
                   :max="new Date().toISOString().substr(0, 10)"
                 ></v-date-picker>
               </v-menu>
@@ -56,7 +53,7 @@
           <!-- Ingredient Selection -->
           <v-card outlined class="mt-4 mb-4">
             <v-card-title>
-              <v-icon left>mdi-package-variant-closed</v-icon>
+              <v-icon start>mdi-package-variant-closed</v-icon>
               Select Ingredients
             </v-card-title>
             <v-card-text>
@@ -65,7 +62,7 @@
                 :items="ingredients"
                 :search="search"
                 :loading="loading"
-                item-key="id"
+                item-value="id"
                 show-select
                 v-model="selectedIngredients"
                 :items-per-page="10"
@@ -91,13 +88,13 @@
           <!-- Quantity Adjustments -->
           <v-card outlined class="mb-4" v-if="selectedIngredients.length > 0">
             <v-card-title>
-              <v-icon left>mdi-scale</v-icon>
+              <v-icon start>mdi-scale</v-icon>
               Quantity Adjustments
             </v-card-title>
             <v-card-text>
               <v-alert
                 type="warning"
-                text
+                text:true
                 class="mb-4"
               >
                 Please specify the quantity to remove for each selected ingredient.
@@ -152,7 +149,7 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn
-          text
+          variant="text"
           @click="cancel"
         >
           Cancel
@@ -163,7 +160,7 @@
           :disabled="!isFormValid || selectedIngredients.length === 0 || !isValidQuantities || submitting"
           @click="submitRemoval"
         >
-          <v-icon left>mdi-content-save</v-icon>
+          <v-icon start>mdi-content-save</v-icon>
           Save Removal
         </v-btn>
       </v-card-actions>
@@ -176,10 +173,9 @@
       timeout="5000"
     >
       Removal recorded successfully!
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions>
         <v-btn
-          text
-          v-bind="attrs"
+          variant="text"
           @click="showSuccessAlert = false"
         >
           Close
@@ -193,10 +189,9 @@
       timeout="5000"
     >
       {{ errorMessage }}
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions>
         <v-btn
-          text
-          v-bind="attrs"
+          variant="text"
           @click="showErrorAlert = false"
         >
           Close
@@ -206,10 +201,10 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, reactive, computed, onMounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../plugins/supabase'
+import { supabase } from '../services/supabase'
 import { useAuthStore } from '../stores/auth'
 
 interface Ingredient {
@@ -219,185 +214,157 @@ interface Ingredient {
   unit: string
 }
 
-export default defineComponent({
-  name: 'NewRemovalView',
+const router = useRouter()
+const authStore = useAuthStore()
+
+const form = ref<any>(null)
+const isFormValid = ref(false)
+const loading = ref(false)
+const submitting = ref(false)
+const showSuccessAlert = ref(false)
+const showErrorAlert = ref(false)
+const errorMessage = ref('')
+
+// Removal information
+const reason = ref('')
+const reasonOptions = [
+  { title: 'Waste/Expired', value: 'waste' },
+  { title: 'Used for Sale', value: 'sale' },
+  { title: 'Transferred', value: 'transfer' }
+]
+const removalDate = ref(new Date().toISOString().substr(0, 10))
+const removalDateMenu = ref(false)
+
+// Ingredient selection
+const search = ref('')
+const ingredients = ref<Ingredient[]>([])
+const selectedIngredients = ref<Ingredient[]>([])
+const removalQuantities = reactive<Record<string, number>>({})
+
+const headers = [
+  { title: 'Name', key: 'name' },
+  { title: 'Current Quantity', key: 'current_quantity' },
+  { title: 'Unit', key: 'unit' }
+]
+
+// Validate that all selected ingredients have valid quantities
+const isValidQuantities = computed(() => {
+  return selectedIngredients.value.every(ingredient => {
+    const quantity = removalQuantities[ingredient.id]
+    return (
+      quantity !== undefined &&
+      quantity > 0 &&
+      quantity <= ingredient.current_quantity
+    )
+  })
+})
+
+// Fetch ingredients
+const fetchIngredients = async () => {
+  loading.value = true
   
-  setup() {
-    const router = useRouter()
-    const authStore = useAuthStore()
+  try {
+    const { data, error } = await supabase
+      .from('ingredients')
+      .select('id, name, current_quantity, unit')
+      .gt('current_quantity', 0) // Only show ingredients with stock
+      .order('name')
     
-    const form = ref<any>(null)
-    const isFormValid = ref(false)
-    const loading = ref(false)
-    const submitting = ref(false)
-    const showSuccessAlert = ref(false)
-    const showErrorAlert = ref(false)
-    const errorMessage = ref('')
+    if (error) throw error
     
-    // Removal information
-    const reason = ref('')
-    const reasonOptions = [
-      { text: 'Waste/Expired', value: 'waste' },
-      { text: 'Used for Sale', value: 'sale' },
-      { text: 'Transferred', value: 'transfer' }
-    ]
-    const removalDate = ref(new Date().toISOString().substr(0, 10))
-    const removalDateMenu = ref(false)
-    
-    // Ingredient selection
-    const search = ref('')
-    const ingredients = ref<Ingredient[]>([])
-    const selectedIngredients = ref<Ingredient[]>([])
-    const removalQuantities = reactive<Record<string, number>>({})
-    
-    const headers = [
-      { text: 'Name', value: 'name' },
-      { text: 'Current Quantity', value: 'current_quantity' },
-      { text: 'Unit', value: 'unit' }
-    ]
-    
-    // Validate that all selected ingredients have valid quantities
-    const isValidQuantities = computed(() => {
-      return selectedIngredients.value.every(ingredient => {
-        const quantity = removalQuantities[ingredient.id]
-        return (
-          quantity !== undefined &&
-          quantity > 0 &&
-          quantity <= ingredient.current_quantity
-        )
-      })
-    })
-    
-    // Fetch ingredients
-    const fetchIngredients = async () => {
-      loading.value = true
-      
-      try {
-        const { data, error } = await supabase
-          .from('ingredients')
-          .select('id, name, current_quantity, unit')
-          .gt('current_quantity', 0) // Only show ingredients with stock
-          .order('name')
-        
-        if (error) throw error
-        
-        ingredients.value = data || []
-      } catch (error) {
-        console.error('Error fetching ingredients:', error)
-        showError('Failed to load ingredients')
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Show error message
-    const showError = (message: string) => {
-      errorMessage.value = message
-      showErrorAlert.value = true
-    }
-    
-    // Submit the removal
-    const submitRemoval = async () => {
-      if (!isFormValid.value || selectedIngredients.value.length === 0 || !isValidQuantities.value) {
-        form.value?.validate()
-        return
-      }
-      
-      if (!authStore.user) {
-        showError('You must be logged in to submit a removal')
-        return
-      }
-      
-      submitting.value = true
-      
-      try {
-        // Insert removal record
-        const { data: removalData, error: removalError } = await supabase
-          .from('removals')
-          .insert({
-            reason: reason.value,
-            removal_date: new Date(removalDate.value).toISOString(),
-            created_by: authStore.user.id
-          })
-          .select()
-          .single()
-        
-        if (removalError) throw removalError
-        
-        // Insert removal items
-        const removalItemsToInsert = selectedIngredients.value.map(ingredient => ({
-          removal_id: removalData.id,
-          ingredient_id: ingredient.id,
-          quantity: removalQuantities[ingredient.id]
-        }))
-        
-        const { error: itemsError } = await supabase
-          .from('removal_items')
-          .insert(removalItemsToInsert)
-        
-        if (itemsError) throw itemsError
-        
-        // Show success message
-        showSuccessAlert.value = true
-        
-        // Navigate to removals list after a delay
-        setTimeout(() => {
-          router.push('/removals')
-        }, 1500)
-      } catch (error: any) {
-        console.error('Error submitting removal:', error)
-        showError(error.message || 'Failed to submit removal')
-      } finally {
-        submitting.value = false
-      }
-    }
-    
-    // Cancel and go back
-    const cancel = () => {
-      router.push('/removals')
-    }
-    
-    // Initialize default removal quantities when ingredients are selected
-    watch(selectedIngredients, (newVal) => {
-      newVal.forEach(ingredient => {
-        if (removalQuantities[ingredient.id] === undefined) {
-          removalQuantities[ingredient.id] = ingredient.current_quantity / 2
-        }
-      })
-      
-      // Remove quantities for deselected ingredients
-      Object.keys(removalQuantities).forEach(id => {
-        if (!newVal.some(ingredient => ingredient.id === id)) {
-          delete removalQuantities[id]
-        }
-      })
-    })
-    
-    onMounted(() => {
-      fetchIngredients()
-    })
-    
-    return {
-      form,
-      isFormValid,
-      loading,
-      submitting,
-      showSuccessAlert,
-      showErrorAlert,
-      errorMessage,
-      reason,
-      reasonOptions,
-      removalDate,
-      removalDateMenu,
-      search,
-      ingredients,
-      selectedIngredients,
-      removalQuantities,
-      headers,
-      isValidQuantities,
-      cancel,
-      submitRemoval
-    }
+    ingredients.value = data || []
+  } catch (error: any) {
+    console.error('Error fetching ingredients:', error)
+    showError('Failed to load ingredients')
+  } finally {
+    loading.value = false
   }
+}
+
+// Show error message
+const showError = (message: string) => {
+  errorMessage.value = message
+  showErrorAlert.value = true
+}
+
+// Submit the removal
+const submitRemoval = async () => {
+  if (!isFormValid.value || selectedIngredients.value.length === 0 || !isValidQuantities.value) {
+    form.value?.validate()
+    return
+  }
+  
+  if (!authStore.user) {
+    showError('You must be logged in to submit a removal')
+    return
+  }
+  
+  submitting.value = true
+  
+  try {
+    // Insert removal record
+    const { data: removalData, error: removalError } = await supabase
+      .from('removals')
+      .insert({
+        reason: reason.value,
+        removal_date: new Date(removalDate.value).toISOString(),
+        created_by: authStore.user.id
+      })
+      .select()
+      .single()
+    
+    if (removalError) throw removalError
+    
+    // Insert removal items
+    const removalItemsToInsert = selectedIngredients.value.map(ingredient => ({
+      removal_id: removalData.id,
+      ingredient_id: ingredient.id,
+      quantity: removalQuantities[ingredient.id]
+    }))
+    
+    const { error: itemsError } = await supabase
+      .from('removal_items')
+      .insert(removalItemsToInsert)
+    
+    if (itemsError) throw itemsError
+    
+    // Show success message
+    showSuccessAlert.value = true
+    
+    // Navigate to removals list after a delay
+    setTimeout(() => {
+      router.push('/removals')
+    }, 1500)
+  } catch (error: any) {
+    console.error('Error submitting removal:', error)
+    showError(error.message || 'Failed to submit removal')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// Cancel and go back
+const cancel = () => {
+  router.push('/removals')
+}
+
+// Initialize default removal quantities when ingredients are selected
+watch(selectedIngredients, (newVal) => {
+  newVal.forEach(ingredient => {
+    if (removalQuantities[ingredient.id] === undefined) {
+      removalQuantities[ingredient.id] = ingredient.current_quantity / 2
+    }
+  })
+  
+  // Remove quantities for deselected ingredients
+  Object.keys(removalQuantities).forEach(id => {
+    if (!newVal.some(ingredient => ingredient.id === id)) {
+      delete removalQuantities[id]
+    }
+  })
+})
+
+onMounted(() => {
+  fetchIngredients()
 })
 </script>

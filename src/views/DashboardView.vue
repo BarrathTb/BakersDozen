@@ -139,12 +139,12 @@ export default defineComponent({
     const hasChartData = computed(() => ingredients.value.length > 0)
     
     // Fetch ingredients data
-    const fetchIngredients = () => {
+    const fetchIngredients = async () => {
       loading.value = true
       
       try {
-        ingredients.value = db.getAll<'ingredients'>('ingredients')
-          .sort((a, b) => a.name.localeCompare(b.name))
+        ingredients.value = await db.getAll<'ingredients'>('ingredients')
+        ingredients.value.sort((a, b) => a.name.localeCompare(b.name))
       } catch (error) {
         console.error('Error fetching ingredients:', error)
       } finally {

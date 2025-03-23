@@ -282,11 +282,11 @@ export default defineComponent({
       loading.value = true
       
       try {
-        const recipeData = db.getById<'recipes'>('recipes', recipeId);
+        const recipeData = await db.getById<'recipes'>('recipes', recipeId);
         if (!recipeData) throw new Error('Recipe not found');
 
         // Fetch recipe ingredients
-        const recipeIngredients = db.query<'recipe_ingredients'>('recipe_ingredients', 
+        const recipeIngredients = await db.query<'recipe_ingredients'>('recipe_ingredients', 
           item => item.recipe_id === recipeId);
 
         // Transform data
@@ -296,9 +296,9 @@ export default defineComponent({
           expected_yield: recipeData.expected_yield,
           created_at: recipeData.created_at,
           created_by: recipeData.created_by,
-          created_by_email: db.getById<'users'>('users', recipeData.created_by)?.email || 'Unknown',
-          ingredients: recipeIngredients.map((recipeIngredient) => {
-            const ingredient = db.getById<'ingredients'>('ingredients', recipeIngredient.ingredient_id);
+          created_by_email: (await db.getById<'users'>('users', recipeData.created_by))?.email || 'Unknown',
+          ingredients: await Promise.all(recipeIngredients.map(async (recipeIngredient) => {
+            const ingredient = await db.getById<'ingredients'>('ingredients', recipeIngredient.ingredient_id);
             return {
               id: ingredient?.id || '',
               name: ingredient?.name || '',
@@ -306,7 +306,7 @@ export default defineComponent({
               current_quantity: ingredient?.current_quantity || 0,
               unit: ingredient?.unit || ''
             };
-          })
+          }))
         }
       } catch (error) {
         console.error('Error fetching recipe:', error)
@@ -321,12 +321,12 @@ export default defineComponent({
       loadingBakes.value = true
       
       try {
-        const bakeData = db.query<'bakes'>('bakes', item => item.recipe_id === recipeId)
-          .sort((a, b) => new Date(b.bake_date).getTime() - new Date(a.bake_date).getTime());
+        const bakeData = await db.query<'bakes'>('bakes', item => item.recipe_id === recipeId);
+        bakeData.sort((a, b) => new Date(b.bake_date).getTime() - new Date(a.bake_date).getTime());
         
         // Transform data
-        bakes.value = bakeData.map((item: DbBake) => {
-          const user = db.getById<'users'>('users', item.created_by);
+        bakes.value = await Promise.all(bakeData.map(async (item: DbBake) => {
+          const user = await db.getById<'users'>('users', item.created_by);
           
           return {
             id: item.id,
@@ -335,7 +335,7 @@ export default defineComponent({
             efficiency: recipe.value ? (item.actual_yield / recipe.value.expected_yield) * 100 : 0,
             baker: user?.email || 'Unknown'
           };
-        })
+        }))
       } catch (error) {
         console.error('Error fetching bake history:', error)
       } finally {

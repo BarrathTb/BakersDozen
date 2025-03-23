@@ -62,6 +62,7 @@ export interface Database {
           expected_yield: number
           created_by: string
           created_at: string
+          ingredient_count?: number;
         }
         Insert: {
           id?: string
@@ -69,6 +70,7 @@ export interface Database {
           expected_yield: number
           created_by: string
           created_at?: string
+          ingredient_count?: number;
         }
         Update: {
           id?: string
@@ -76,6 +78,7 @@ export interface Database {
           expected_yield?: number
           created_by?: string
           created_at?: string
+          ingredient_count?: number;
         }
       }
       recipe_ingredients: {

@@ -168,15 +168,15 @@ export default defineComponent({
     }
     
     // Fetch removals
-    const fetchRemovals = () => {
+    const fetchRemovals = async () => {
       loading.value = true
       
       try {
-        const removalData = db.getAll<'removals'>('removals')
-          .sort((a, b) => new Date(b.removal_date).getTime() - new Date(a.removal_date).getTime())
+        const removalData = await db.getAll<'removals'>('removals')
+        removalData.sort((a, b) => new Date(b.removal_date).getTime() - new Date(a.removal_date).getTime())
         
         // Get user data for each removal
-        const users = db.getAll<'users'>('users')
+        const users = await db.getAll<'users'>('users')
         
         // Transform data
         removals.value = removalData.map(item => {
@@ -205,15 +205,15 @@ export default defineComponent({
     }
     
     // Fetch removal items
-    const fetchRemovalItems = (removalId: string) => {
+    const fetchRemovalItems = async (removalId: string) => {
       loadingItems.value = true
       
       try {
-        const removalItemsData = db.query<'removal_items'>('removal_items', 
+        const removalItemsData = await db.query<'removal_items'>('removal_items', 
           item => item.removal_id === removalId
         )
         
-        const ingredients = db.getAll<'ingredients'>('ingredients')
+        const ingredients = await db.getAll<'ingredients'>('ingredients')
         
         // Transform data
         removalItems.value = removalItemsData.map(item => {

@@ -15,13 +15,14 @@ export const auth = {
   // Get current session
   async getSession(): Promise<{ data: { session: Session | null }, error: Error | null }> {
     const { data, error } = await supabase.auth.getSession()
+    console.log("Current Session:", data.session)
     return { data: { session: data.session }, error }
   },
   
   // Get current user with profile data
   async getUser(): Promise<{ data: { user: User | null }, error: Error | null }> {
     const { data: { user }, error } = await supabase.auth.getUser()
-    
+    console.log("Current User:", user)
     if (error || !user) {
       return { data: { user: null }, error }
     }
@@ -86,7 +87,7 @@ export const auth = {
     if (profileError && profileError.code !== 'PGRST116') {
       return { user: null, session: null, error: profileError }
     }
-    
+    console.log("User session Profile:",profile)
     return {
       user: {
         id: data.user.id,
@@ -171,12 +172,14 @@ export const auth = {
   // Check if user is admin
   async isAdmin(): Promise<boolean> {
     const { data } = await this.getUser()
+    console.log(" User Is Admin:",data.user)
     return data.user ? data.user.role === 'admin' : false
   },
   
   // Check if user is logged in
   async isLoggedIn(): Promise<boolean> {
     const { data } = await this.getUser()
+    console.log(" User Is logged in:", data.user)
     return data.user !== null
   },
   

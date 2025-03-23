@@ -365,11 +365,11 @@ export default defineComponent({
     }
     
     // Fetch ingredient details
-    const fetchIngredient = () => {
+    const fetchIngredient = async () => {
       loading.value = true
       
       try {
-        const ingredientData = db.getById<'ingredients'>('ingredients', ingredientId)
+        const ingredientData = await db.getById<'ingredients'>('ingredients', ingredientId)
         
         if (ingredientData) {
           ingredient.value = ingredientData
@@ -382,31 +382,31 @@ export default defineComponent({
     }
     
     // Fetch ingredient movements
-    const fetchMovements = () => {
+    const fetchMovements = async () => {
       loadingMovements.value = true
       
       try {
         // Fetch deliveries
-        const deliveryItems = db.query<'delivery_items'>('delivery_items', 
+        const deliveryItems = await db.query<'delivery_items'>('delivery_items', 
           item => item.ingredient_id === ingredientId
         )
         
-        const deliveries = db.getAll<'deliveries'>('deliveries')
+        const deliveries = await db.getAll<'deliveries'>('deliveries')
         
         // Fetch removals
-        const removalItems = db.query<'removal_items'>('removal_items', 
+        const removalItems = await db.query<'removal_items'>('removal_items', 
           item => item.ingredient_id === ingredientId
         )
         
-        const removals = db.getAll<'removals'>('removals')
+        const removals = await db.getAll<'removals'>('removals')
         
         // Fetch bakes
-        const recipeIngredients = db.query<'recipe_ingredients'>('recipe_ingredients', 
+        const recipeIngredients = await db.query<'recipe_ingredients'>('recipe_ingredients', 
           item => item.ingredient_id === ingredientId
         )
         
-        const recipes = db.getAll<'recipes'>('recipes')
-        const bakes = db.getAll<'bakes'>('bakes')
+        const recipes = await db.getAll<'recipes'>('recipes')
+        const bakes = await db.getAll<'bakes'>('bakes')
         
         // Transform deliveries
         const deliveryMovements = deliveryItems.map(item => {
@@ -464,15 +464,15 @@ export default defineComponent({
     }
     
     // Fetch recipes using this ingredient
-    const fetchRecipes = () => {
+    const fetchRecipes = async () => {
       loadingRecipes.value = true
       
       try {
-        const recipeIngredients = db.query<'recipe_ingredients'>('recipe_ingredients', 
+        const recipeIngredients = await db.query<'recipe_ingredients'>('recipe_ingredients', 
           item => item.ingredient_id === ingredientId
         )
         
-        const recipesData = db.getAll<'recipes'>('recipes')
+        const recipesData = await db.getAll<'recipes'>('recipes')
         
         // Transform data
         recipes.value = recipeIngredients.map(item => {

@@ -175,15 +175,15 @@ export default defineComponent({
     }
     
     // Fetch deliveries
-    const fetchDeliveries = () => {
+    const fetchDeliveries = async () => {
       loading.value = true
       
       try {
-        const deliveriesData = db.getAll<'deliveries'>('deliveries')
-          .sort((a, b) => new Date(b.delivery_date).getTime() - new Date(a.delivery_date).getTime())
+        const deliveriesData = await db.getAll<'deliveries'>('deliveries')
+        const sortedDeliveriesData = deliveriesData.sort((a, b) => new Date(b.delivery_date).getTime() - new Date(a.delivery_date).getTime())
         
-        const deliveryItemsData = db.getAll<'delivery_items'>('delivery_items')
-        const users = db.getAll<'users'>('users')
+        const deliveryItemsData = await db.getAll<'delivery_items'>('delivery_items')
+        const users = await db.getAll<'users'>('users')
         
         // Count items per delivery
         const itemCounts: Record<string, number> = {}
@@ -220,18 +220,18 @@ export default defineComponent({
     }
     
     // Fetch delivery items
-    const fetchDeliveryItems = (deliveryId: string) => {
+    const fetchDeliveryItems = async (deliveryId: string) => {
       loadingItems.value = true
       
       try {
-        const deliveryItemsData = db.query<'delivery_items'>('delivery_items', 
+        const deliveryItemsData = await db.query<'delivery_items'>('delivery_items', 
           item => item.delivery_id === deliveryId
         )
         
-        const ingredients = db.getAll<'ingredients'>('ingredients')
+        const ingredients = await db.getAll<'ingredients'>('ingredients')
         
         // Transform data
-        deliveryItems.value = deliveryItemsData.map(item => {
+        deliveryItems.value = (await deliveryItemsData).map(item => {
           const ingredient = ingredients.find(i => i.id === item.ingredient_id)
           
           if (!ingredient) {

@@ -220,15 +220,15 @@ export default defineComponent({
     }
     
     // Fetch bakes
-    const fetchBakes = () => {
+    const fetchBakes = async () => {
       loading.value = true
       
       try {
-        const bakesData = db.getAll<'bakes'>('bakes')
-          .sort((a, b) => new Date(b.bake_date).getTime() - new Date(a.bake_date).getTime())
+        const bakesData = await db.getAll<'bakes'>('bakes')
+        bakesData.sort((a, b) => new Date(b.bake_date).getTime() - new Date(a.bake_date).getTime())
         
-        const recipes = db.getAll<'recipes'>('recipes')
-        const users = db.getAll<'users'>('users')
+        const recipes = await db.getAll<'recipes'>('recipes')
+        const users = await db.getAll<'users'>('users')
         
         // Transform data
         bakes.value = bakesData.map(item => {
@@ -279,15 +279,15 @@ export default defineComponent({
     }
     
     // Fetch bake ingredients
-    const fetchBakeIngredients = (recipeId: string) => {
+    const fetchBakeIngredients = async (recipeId: string) => {
       loadingIngredients.value = true
       
       try {
-        const recipeIngs = db.query<'recipe_ingredients'>('recipe_ingredients', 
+        const recipeIngs = await db.query<'recipe_ingredients'>('recipe_ingredients', 
           item => item.recipe_id === recipeId
         )
         
-        const ingredients = db.getAll<'ingredients'>('ingredients')
+        const ingredients = await db.getAll<'ingredients'>('ingredients')
         
         // Transform data
         bakeIngredients.value = recipeIngs.map(item => {

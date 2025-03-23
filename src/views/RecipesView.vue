@@ -163,7 +163,7 @@ export default defineComponent({
       loading.value = true
 
       try {
-        recipes.value = db.getAll<'recipes'>('recipes')
+        recipes.value = await db.getAll<'recipes'>('recipes')
         recipes.value.sort((a, b) => b.created_at.localeCompare(a.created_at))
       } catch (error) {
         console.error('Error fetching recipes:', error)
@@ -172,10 +172,10 @@ export default defineComponent({
       }
 
       // Get ingredient counts for each recipe
-      recipes.value.forEach(recipe => {
-        const ingredientIds = db.query<'recipe_ingredients'>('recipe_ingredients', 
+      recipes.value.forEach(async recipe => {
+        const ingredientIds = (await db.query<'recipe_ingredients'>('recipe_ingredients', 
           item => item.recipe_id === recipe.id
-        ).map(item => item.ingredient_id)
+        )).map(item => item.ingredient_id)
 
         // Add the ingredient count to the recipe object
         recipe.ingredient_count = ingredientIds.length

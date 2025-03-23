@@ -76,31 +76,30 @@
               <v-card-text>
                 <v-row>
                   <v-col cols="12" md="6">
-                    <v-autocomplete
-                      v-model="ingredient.ingredientId"
-                      :items="availableIngredients"
-                      item-text="name"
-                      item-value="id"
-                      label="Ingredient"
-                      :rules="[v => !!v || 'Ingredient is required']"
-                      required
-                      @change="updateIngredientDetails(index)"
-                    >
-                      <!-- Add template for displaying items properly -->
-                      <template v-slot:item="{ item }">
-                        <v-list-item-content>
-                          <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
-                          <v-list-item-subtitle>
-                            In Stock: {{ item.raw.current_quantity }} {{ item.raw.unit }}
-                          </v-list-item-subtitle>
-                        </v-list-item-content>
-                      </template>
-                      
-                      <!-- Add template for selection display -->
-                      <template v-slot:selection="{ item }">
-                        {{ item.raw.name }}
-                      </template>
-                    </v-autocomplete>
+                     <v-combobox
+                        v-model="ingredient.ingredientId"
+                        :items="availableIngredients"
+                        item-title="name"
+                        item-value="id"
+                        label="Ingredient"
+                        :rules="[v => !!v || 'Ingredient is required']"
+                        required
+                        @change="updateIngredientDetails(index)"
+                      >
+                        <template v-slot:item="{ props, item }">
+                          <v-list-item v-bind="props">
+                            <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
+                            <v-list-item-subtitle>
+                              In Stock: {{ item.raw.current_quantity }} {{ item.raw.unit }}
+                            </v-list-item-subtitle>
+                          </v-list-item>
+                        </template>
+                        
+                        <template v-slot:selection="{ item }">
+                          {{ item.raw.name }}
+                        </template>
+                      </v-combobox>
+
                   </v-col>
                   <v-col cols="12" md="6">
                     <v-text-field

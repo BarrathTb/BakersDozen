@@ -78,9 +78,9 @@
     </v-main>
 
     <!-- Footer -->
-    <v-footer color="primary" :app="true">
+    <!-- <v-footer color="primary" :app="true">
   <span>&copy; {{ new Date().getFullYear() }} Bakers Dozen</span>
-</v-footer>
+</v-footer> -->
 
 
   </v-app>

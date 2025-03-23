@@ -221,10 +221,10 @@ export default defineComponent({
     }
     
     // Fetch ingredients
-    const fetchIngredients = () => {
+    const fetchIngredients = async () => {
       try {
-        ingredients.value = db.getAll<'ingredients'>('ingredients')
-          .sort((a, b) => a.name.localeCompare(b.name))
+        ingredients.value = await db.getAll<'ingredients'>('ingredients')
+        ingredients.value.sort((a, b) => a.name.localeCompare(b.name))
       } catch (error) {
         console.error('Error fetching ingredients:', error)
         showError('Failed to load ingredients')
@@ -274,7 +274,7 @@ export default defineComponent({
     }
     
     // Submit the delivery
-    const submitDelivery = () => {
+    const submitDelivery = async () => {
       if (!isFormValid.value || deliveryItems.value.length === 0) {
         form.value?.validate()
         return
@@ -289,7 +289,7 @@ export default defineComponent({
       
       try {
         // Insert delivery record
-        const deliveryData = db.insert('deliveries', {
+        const deliveryData = await db.insert('deliveries', {
           supplier: supplier.value,
           delivery_date: formatDateString(deliveryDate.value),
           created_by: authStore.user.id,
@@ -297,8 +297,8 @@ export default defineComponent({
         })
         
         // Insert delivery items
-        deliveryItems.value.forEach(item => {
-          db.insert('delivery_items', {
+        deliveryItems.value.forEach(async item => {
+          await db.insert('delivery_items', {
             delivery_id: deliveryData.id,
             ingredient_id: item.ingredient_id,
             quantity: item.quantity,
@@ -307,9 +307,9 @@ export default defineComponent({
           })
           
           // Update ingredient quantity
-          const ingredient = db.getById<'ingredients'>('ingredients', item.ingredient_id)
+          const ingredient = await db.getById<'ingredients'>('ingredients', item.ingredient_id)
           if (ingredient) {
-            db.update('ingredients', {
+            await db.update('ingredients', {
               id: ingredient.id,
               current_quantity: ingredient.current_quantity + item.quantity,
               last_updated: new Date().toISOString()

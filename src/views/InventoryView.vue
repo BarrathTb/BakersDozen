@@ -231,12 +231,12 @@ export default defineComponent({
     }
     
     // Fetch ingredients
-    const fetchIngredients = () => {
+    const fetchIngredients = async () => {
       loading.value = true
       
       try {
-        ingredients.value = db.getAll<'ingredients'>('ingredients')
-          .sort((a, b) => a.name.localeCompare(b.name))
+        const result = await db.getAll<'ingredients'>('ingredients')
+        ingredients.value = result.sort((a, b) => a.name.localeCompare(b.name))
       } catch (error) {
         console.error('Error fetching ingredients:', error)
       } finally {

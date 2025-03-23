@@ -67,7 +67,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed, PropType } from 'vue'
+import { defineComponent, computed } from 'vue'
+import type { PropType } from 'vue'
 import { format } from 'date-fns'
 
 interface Ingredient {
