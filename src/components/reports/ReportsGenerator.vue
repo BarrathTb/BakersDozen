@@ -29,14 +29,13 @@
                 offset-y
                 min-width="auto"
               >
-                <template v-slot:activator="{ on, attrs }">
+                <template v-slot:activator="{ props }">
                   <v-text-field
                     v-model="startDate"
                     label="Start Date"
                     prepend-icon="mdi-calendar"
                     readonly
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     :rules="[v => !!v || 'Start date is required']"
                     required
                   ></v-text-field>
@@ -57,14 +56,13 @@
                 offset-y
                 min-width="auto"
               >
-                <template v-slot:activator="{ on, attrs }">
+                <template v-slot:activator="{ props }">
                   <v-text-field
                     v-model="endDate"
                     label="End Date"
                     prepend-icon="mdi-calendar"
                     readonly
-                    v-bind="attrs"
-                    v-on="on"
+                    v-bind="props"
                     :rules="[
                       v => !!v || 'End date is required',
                       v => !startDate || new Date(v) >= new Date(startDate) || 'End date must be after start date'
@@ -285,13 +283,12 @@
     <v-snackbar
       v-model="showSuccessAlert"
       color="success"
-      timeout="5000"
+      :timeout="5000"
     >
       {{ successMessage }}
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions>
         <v-btn
           text
-          v-bind="attrs"
           @click="showSuccessAlert = false"
         >
           Close
@@ -302,13 +299,12 @@
     <v-snackbar
       v-model="showErrorAlert"
       color="error"
-      timeout="5000"
+      :timeout="5000"
     >
       {{ errorMessage }}
-      <template v-slot:action="{ attrs }">
+      <template v-slot:actions>
         <v-btn
           text
-          v-bind="attrs"
           @click="showErrorAlert = false"
         >
           Close
@@ -319,9 +315,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, computed } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import { format } from 'date-fns'
-import { db } from '../../services/database'
+import { supabase } from '../../services/supabase'
 
 export default defineComponent({
   name: 'ReportsGenerator',
@@ -389,18 +385,33 @@ export default defineComponent({
     ]
     
     // Fetch ingredients and recipes
-    const fetchFilterData = () => {
+    const fetchFilterData = async () => {
       try {
-        // Fetch ingredients
-        ingredients.value = db.getAll<'ingredients'>('ingredients')
-          .sort((a, b) => a.name.localeCompare(b.name))
+        loading.value = true
+
+        // Fetch ingredients from Supabase
+        const { data: ingredientsData, error: ingredientsError } = await supabase
+          .from('ingredients')
+          .select('*')
         
-        // Fetch recipes
-        recipes.value = db.getAll<'recipes'>('recipes')
-          .sort((a, b) => a.name.localeCompare(b.name))
+        if (ingredientsError) throw ingredientsError
+        ingredients.value = ingredientsData || []
+        ingredients.value.sort((a, b) => a.name.localeCompare(b.name))
+
+        // Fetch recipes from Supabase
+        const { data: recipesData, error: recipesError } = await supabase
+          .from('recipes')
+          .select('*')
+        
+        if (recipesError) throw recipesError
+        recipes.value = recipesData || []
+        recipes.value.sort((a, b) => a.name.localeCompare(b.name))
+        
+        loading.value = false
       } catch (error) {
         console.error('Error fetching filter data:', error)
         showError('Failed to load filter data')
+        loading.value = false
       }
     }
     
@@ -442,7 +453,7 @@ export default defineComponent({
       showErrorAlert.value = true
     }
     
-    // Generate report
+    // Generate report using Supabase
     const generateReport = async () => {
       if (!isFormValid.value) {
         form.value?.validate()
@@ -458,11 +469,11 @@ export default defineComponent({
         endDateTime.setHours(23, 59, 59, 999) // End of day
         
         if (reportType.value === 'inventory-movement') {
-          generateInventoryMovementReport(startDateTime, endDateTime)
+          await generateInventoryMovementReport(startDateTime, endDateTime)
         } else if (reportType.value === 'waste-tracking') {
-          generateWasteTrackingReport(startDateTime, endDateTime)
+          await generateWasteTrackingReport(startDateTime, endDateTime)
         } else if (reportType.value === 'production-efficiency') {
-          generateProductionEfficiencyReport(startDateTime, endDateTime)
+          await generateProductionEfficiencyReport(startDateTime, endDateTime)
         }
         
         if (sendEmail.value) {
@@ -480,39 +491,73 @@ export default defineComponent({
     }
     
     // Generate inventory movement report
-    const generateInventoryMovementReport = (startDateTime: Date, endDateTime: Date) => {
+    const generateInventoryMovementReport = async (startDateTime: Date, endDateTime: Date) => {
       try {
-        // Get deliveries
-        const deliveries = db.getAll<'deliveries'>('deliveries')
-          .filter(d => {
-            const date = new Date(d.delivery_date)
-            return date >= startDateTime && date <= endDateTime
-          })
+        // Get all required data from Supabase
+        const startDateStr = startDateTime.toISOString()
+        const endDateStr = endDateTime.toISOString()
         
-        const deliveryItems = db.getAll<'delivery_items'>('delivery_items')
-        const ingredients = db.getAll<'ingredients'>('ingredients')
+        // Fetch ingredients
+        const { data: ingredientsData, error: ingredientsError } = await supabase
+          .from('ingredients')
+          .select('*')
         
-        // Transform deliveries data
-        const deliveryData = deliveryItems
-          .filter(item => {
-            const delivery = deliveries.find(d => d.id === item.delivery_id)
-            if (!delivery) return false
-            
+        if (ingredientsError) throw ingredientsError
+        const ingredients = ingredientsData || []
+        
+        // Fetch deliveries in date range
+        const { data: deliveriesData, error: deliveriesError } = await supabase
+          .from('deliveries')
+          .select('*, delivery_items(*)')
+          .gte('delivery_date', startDateStr)
+          .lte('delivery_date', endDateStr)
+        
+        if (deliveriesError) throw deliveriesError
+        const deliveries = deliveriesData || []
+        
+        // Fetch removals in date range
+        const { data: removalsData, error: removalsError } = await supabase
+          .from('removals')
+          .select('*, removal_items(*)')
+          .gte('removal_date', startDateStr)
+          .lte('removal_date', endDateStr)
+        
+        if (removalsError) throw removalsError
+        const removals = removalsData || []
+        
+        // Fetch bakes in date range
+        const { data: bakesData, error: bakesError } = await supabase
+          .from('bakes')
+          .select('*, recipes(*)')
+          .gte('bake_date', startDateStr)
+          .lte('bake_date', endDateStr)
+        
+        if (bakesError) throw bakesError
+        const bakes = bakesData || []
+        
+        // Fetch recipe ingredients for all recipes used in bakes
+        const recipeIds = bakes.map(bake => bake.recipe_id)
+        const { data: recipeIngredientsData, error: recipeIngredientsError } = await supabase
+          .from('recipe_ingredients')
+          .select('*')
+          .in('recipe_id', recipeIds)
+        
+        if (recipeIngredientsError) throw recipeIngredientsError
+        const recipeIngredients = recipeIngredientsData || []
+        
+        // Process delivery data
+        const deliveryData = []
+        for (const delivery of deliveries) {
+          for (const item of delivery.delivery_items) {
             const ingredient = ingredients.find(i => i.id === item.ingredient_id)
-            if (!ingredient) return false
+            if (!ingredient) continue
             
             // Apply ingredient filter if selected
             if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(item.ingredient_id)) {
-              return false
+              continue
             }
             
-            return true
-          })
-          .map(item => {
-            const delivery = deliveries.find(d => d.id === item.delivery_id)!
-            const ingredient = ingredients.find(i => i.id === item.ingredient_id)!
-            
-            return {
+            deliveryData.push({
               date: delivery.delivery_date,
               ingredient_id: ingredient.id,
               ingredient_name: ingredient.name,
@@ -521,39 +566,23 @@ export default defineComponent({
               unit: ingredient.unit,
               reference: `Batch: ${item.batch_number}`,
               supplier: delivery.supplier
-            }
-          })
+            })
+          }
+        }
         
-        // Get removals
-        const removals = db.getAll<'removals'>('removals')
-          .filter(r => {
-            const date = new Date(r.removal_date)
-            return date >= startDateTime && date <= endDateTime
-          })
-        
-        const removalItems = db.getAll<'removal_items'>('removal_items')
-        
-        // Transform removals data
-        const removalData = removalItems
-          .filter(item => {
-            const removal = removals.find(r => r.id === item.removal_id)
-            if (!removal) return false
-            
+        // Process removal data
+        const removalData = []
+        for (const removal of removals) {
+          for (const item of removal.removal_items) {
             const ingredient = ingredients.find(i => i.id === item.ingredient_id)
-            if (!ingredient) return false
+            if (!ingredient) continue
             
             // Apply ingredient filter if selected
             if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(item.ingredient_id)) {
-              return false
+              continue
             }
             
-            return true
-          })
-          .map(item => {
-            const removal = removals.find(r => r.id === item.removal_id)!
-            const ingredient = ingredients.find(i => i.id === item.ingredient_id)!
-            
-            return {
+            removalData.push({
               date: removal.removal_date,
               ingredient_id: ingredient.id,
               ingredient_name: ingredient.name,
@@ -562,35 +591,25 @@ export default defineComponent({
               unit: ingredient.unit,
               reference: `Reason: ${removal.reason}`,
               reason: removal.reason
-            }
-          })
+            })
+          }
+        }
         
-        // Get bakes
-        const bakes = db.getAll<'bakes'>('bakes')
-          .filter(b => {
-            const date = new Date(b.bake_date)
-            return date >= startDateTime && date <= endDateTime
-          })
-        
-        const recipes = db.getAll<'recipes'>('recipes')
-        const recipeIngredients = db.getAll<'recipe_ingredients'>('recipe_ingredients')
-        
-        // Transform bakes data
-        let bakeData: any[] = []
-        
-        bakes.forEach(bake => {
-          const recipe = recipes.find(r => r.id === bake.recipe_id)
-          if (!recipe) return
+        // Process bake data
+        const bakeData = []
+        for (const bake of bakes) {
+          const recipe = bake.recipes
+          if (!recipe) continue
           
           const recipeIngs = recipeIngredients.filter(ri => ri.recipe_id === recipe.id)
           
-          recipeIngs.forEach(ri => {
+          for (const ri of recipeIngs) {
             const ingredient = ingredients.find(i => i.id === ri.ingredient_id)
-            if (!ingredient) return
+            if (!ingredient) continue
             
             // Apply ingredient filter if selected
             if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(ingredient.id)) {
-              return
+              continue
             }
             
             bakeData.push({
@@ -603,8 +622,8 @@ export default defineComponent({
               reference: `Recipe: ${recipe.name}`,
               recipe: recipe.name
             })
-          })
-        })
+          }
+        }
         
         // Combine all data and sort by date
         reportData.value = [...deliveryData, ...removalData, ...bakeData]
@@ -616,39 +635,43 @@ export default defineComponent({
     }
     
     // Generate waste tracking report
-    const generateWasteTrackingReport = (startDateTime: Date, endDateTime: Date) => {
+    const generateWasteTrackingReport = async (startDateTime: Date, endDateTime: Date) => {
       try {
-        // Get waste removals
-        const removals = db.getAll<'removals'>('removals')
-          .filter(r => {
-            const date = new Date(r.removal_date)
-            return r.reason === 'waste' && date >= startDateTime && date <= endDateTime
-          })
+        const startDateStr = startDateTime.toISOString()
+        const endDateStr = endDateTime.toISOString()
         
-        const removalItems = db.getAll<'removal_items'>('removal_items')
-        const ingredients = db.getAll<'ingredients'>('ingredients')
+        // Fetch ingredients
+        const { data: ingredientsData, error: ingredientsError } = await supabase
+          .from('ingredients')
+          .select('*')
         
-        // Transform data
-        reportData.value = removalItems
-          .filter(item => {
-            const removal = removals.find(r => r.id === item.removal_id)
-            if (!removal) return false
-            
+        if (ingredientsError) throw ingredientsError
+        const ingredients = ingredientsData || []
+        
+        // Fetch waste removals in date range
+        const { data: removalsData, error: removalsError } = await supabase
+          .from('removals')
+          .select('*, removal_items(*)')
+          .eq('reason', 'waste')
+          .gte('removal_date', startDateStr)
+          .lte('removal_date', endDateStr)
+        
+        if (removalsError) throw removalsError
+        const removals = removalsData || []
+        
+        // Process removal data
+        const wasteData = []
+        for (const removal of removals) {
+          for (const item of removal.removal_items) {
             const ingredient = ingredients.find(i => i.id === item.ingredient_id)
-            if (!ingredient) return false
+            if (!ingredient) continue
             
             // Apply ingredient filter if selected
             if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(item.ingredient_id)) {
-              return false
+              continue
             }
             
-            return true
-          })
-          .map(item => {
-            const removal = removals.find(r => r.id === item.removal_id)!
-            const ingredient = ingredients.find(i => i.id === item.ingredient_id)!
-            
-            return {
+            wasteData.push({
               date: removal.removal_date,
               ingredient_id: ingredient.id,
               ingredient_name: ingredient.name,
@@ -657,9 +680,12 @@ export default defineComponent({
               // Dummy cost calculation - in a real app this would use actual costs
               cost: item.quantity * 2.5,
               reason: 'Waste'
-            }
-          })
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            })
+          }
+        }
+        
+        // Sort by date
+        reportData.value = wasteData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       } catch (error) {
         console.error('Error generating waste tracking report:', error)
         throw new Error('Failed to generate waste tracking report')
@@ -667,43 +693,44 @@ export default defineComponent({
     }
     
     // Generate production efficiency report
-    const generateProductionEfficiencyReport = (startDateTime: Date, endDateTime: Date) => {
+    const generateProductionEfficiencyReport = async (startDateTime: Date, endDateTime: Date) => {
       try {
-        // Get bakes
-        const bakes = db.getAll<'bakes'>('bakes')
-          .filter(b => {
-            const date = new Date(b.bake_date)
-            return date >= startDateTime && date <= endDateTime
-          })
+        const startDateStr = startDateTime.toISOString()
+        const endDateStr = endDateTime.toISOString()
         
-        const recipes = db.getAll<'recipes'>('recipes')
+        // Fetch bakes in date range with their recipes
+        const { data: bakesData, error: bakesError } = await supabase
+          .from('bakes')
+          .select('*, recipes(*)')
+          .gte('bake_date', startDateStr)
+          .lte('bake_date', endDateStr)
         
-        // Transform data
-        reportData.value = bakes
-          .filter(bake => {
-            const recipe = recipes.find(r => r.id === bake.recipe_id)
-            if (!recipe) return false
-            
-            // Apply recipe filter if selected
-            if (selectedRecipes.value.length > 0 && !selectedRecipes.value.includes(recipe.id)) {
-              return false
-            }
-            
-            return true
+        if (bakesError) throw bakesError
+        const bakes = bakesData || []
+        
+        // Process bake data
+        const efficiencyData = []
+        for (const bake of bakes) {
+          const recipe = bake.recipes
+          if (!recipe) continue
+          
+          // Apply recipe filter if selected
+          if (selectedRecipes.value.length > 0 && !selectedRecipes.value.includes(recipe.id)) {
+            continue
+          }
+          
+          efficiencyData.push({
+            date: bake.bake_date,
+            recipe_id: recipe.id,
+            recipe_name: recipe.name,
+            expected_yield: recipe.expected_yield,
+            actual_yield: bake.actual_yield,
+            efficiency: (bake.actual_yield / recipe.expected_yield) * 100
           })
-          .map(bake => {
-            const recipe = recipes.find(r => r.id === bake.recipe_id)!
-            
-            return {
-              date: bake.bake_date,
-              recipe_id: recipe.id,
-              recipe_name: recipe.name,
-              expected_yield: recipe.expected_yield,
-              actual_yield: bake.actual_yield,
-              efficiency: (bake.actual_yield / recipe.expected_yield) * 100
-            }
-          })
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        }
+        
+        // Sort by date
+        reportData.value = efficiencyData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       } catch (error) {
         console.error('Error generating production efficiency report:', error)
         throw new Error('Failed to generate production efficiency report')
@@ -712,19 +739,24 @@ export default defineComponent({
     
     // Send report email
     const sendReportEmail = async () => {
-      // In a real application, this would send an email with the report
-      // For this demo, we'll just simulate it
-      console.log('Sending email with report:', {
-        subject: emailSubject.value,
-        reportType: reportType.value,
-        dateRange: `${startDate.value} to ${endDate.value}`,
-        dataCount: reportData.value.length
-      })
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      return true
+      try {
+        // In a real application, this would send an email with the report
+        // For this demo, we'll just log it
+        console.log('Sending email with report:', {
+          subject: emailSubject.value,
+          reportType: reportType.value,
+          dateRange: `${startDate.value} to ${endDate.value}`,
+          dataCount: reportData.value.length
+        })
+        
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        return true
+      } catch (error) {
+        console.error('Error sending report email:', error)
+        throw new Error('Failed to send report email')
+      }
     }
     
     // Convert array to CSV
