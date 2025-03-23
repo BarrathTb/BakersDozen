@@ -1,0 +1,146 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.v-main {
+  flex: 1 0 auto;
+}
+
+.v-footer {
+  flex-shrink: 0;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(157, 100%, 33%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(157, 100%, 33%, 0.2);
+  }
+}
+
+/* Responsive styles */
+.v-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 16px;
+}
+
+@media (min-width: 600px) {
+  .v-container {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 960px) {
+  .v-container {
+    padding: 32px;
+  }
+}
+
+/* Card layouts */
+.v-card {
+  width: 100%;
+}
+
+/* Form controls */
+.v-text-field,
+.v-select,
+.v-autocomplete,
+.v-textarea {
+  width: 100%;
+}
+
+/* Responsive grid */
+.v-row {
+  margin: 0 -12px;
+}
+
+.v-col {
+  padding: 12px;
+}
+
+/* Make tables responsive */
+.v-data-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Responsive typography */
+h1,
+.text-h1 {
+  font-size: 2rem !important;
+}
+
+h2,
+.text-h2 {
+  font-size: 1.75rem !important;
+}
+
+h3,
+.text-h3 {
+  font-size: 1.5rem !important;
+}
+
+h4,
+.text-h4 {
+  font-size: 1.25rem !important;
+}
+
+@media (min-width: 600px) {
+  h1,
+  .text-h1 {
+    font-size: 2.5rem !important;
+  }
+
+  h2,
+  .text-h2 {
+    font-size: 2rem !important;
+  }
+
+  h3,
+  .text-h3 {
+    font-size: 1.75rem !important;
+  }
+
+  h4,
+  .text-h4 {
+    font-size: 1.5rem !important;
+  }
+}
+
+@media (min-width: 960px) {
+  h1,
+  .text-h1 {
+    font-size: 3rem !important;
+  }
+
+  h2,
+  .text-h2 {
+    font-size: 2.25rem !important;
+  }
+
+  h3,
+  .text-h3 {
+    font-size: 2rem !important;
+  }
+
+  h4,
+  .text-h4 {
+    font-size: 1.75rem !important;
+  }
+}
