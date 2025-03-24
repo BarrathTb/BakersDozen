@@ -9,12 +9,12 @@
       <v-card-text>
         <p class="mb-4">
           We've detected an issue with your authentication session. This might cause problems
-          with accessing protected areas of the application.
+          with accessing protected areas of the application or result in a blank screen after refresh.
         </p>
         
         <p class="mb-4">
-          This is often caused by an expired or invalid session token. You can fix this by
-          signing out and signing back in.
+          This is often caused by an expired or invalid session token. We'll attempt to fix this
+          automatically, or you can sign out and sign back in.
         </p>
         
         <v-alert v-if="errorDetails" type="warning" class="mb-4">
@@ -24,6 +24,13 @@
       
       <v-card-actions>
         <v-spacer></v-spacer>
+        <v-btn
+          color="success"
+          @click="attemptAutoRecovery"
+          :loading="isRecovering"
+        >
+          Auto-Recover
+        </v-btn>
         <v-btn
           color="primary"
           text
@@ -62,6 +69,7 @@
 import { defineComponent, ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
+import { supabase } from '../services/supabase'
 
 export default defineComponent({
   name: 'AuthRecovery',
@@ -76,6 +84,7 @@ export default defineComponent({
   setup(props, { emit }) {
     const showDialog = ref(false)
     const showRecoveryButton = ref(false)
+    const isRecovering = ref(false)
     const isClearing = ref(false)
     const authStore = useAuthStore()
     const router = useRouter()
@@ -101,6 +110,34 @@ export default defineComponent({
       }
     }
     
+    // Attempt automatic recovery without signing out
+    const attemptAutoRecovery = async () => {
+      isRecovering.value = true
+      
+      try {
+        console.log('Attempting automatic session recovery...')
+        
+        // First try to refresh the session
+        const { data, error } = await supabase.auth.refreshSession()
+        
+        if (error) throw error
+        
+        if (data.session) {
+          // Re-initialize auth store with the refreshed session
+          await authStore.initialize()
+          showDialog.value = false
+          showRecoveryButton.value = false
+          sessionStorage.setItem('auth_error_count', '0')
+          emit('recovery-performed')
+          console.log('Automatic recovery successful')
+        }
+      } catch (error) {
+        console.error('Automatic recovery failed:', error)
+      } finally {
+        isRecovering.value = false
+      }
+    }
+    
     // Clear session and reload the page
     const clearSessionAndReload = async () => {
       isClearing.value = true
@@ -121,8 +158,7 @@ export default defineComponent({
         console.error('Error during auth recovery:', error)
         
         // If normal clearing fails, try to force a sign out via localStorage
-        localStorage.removeItem('supabase.auth.token')
-        localStorage.removeItem('supabase.auth.refreshToken')
+        await supabase.auth.signOut({ scope: 'local' })
         
         // Reload the page
         window.location.href = '/login?clear_auth=true'
@@ -162,8 +198,10 @@ export default defineComponent({
     return {
       showDialog,
       showRecoveryButton,
+        isRecovering,
       isClearing,
       clearSessionAndReload,
+      attemptAutoRecovery,
       dismissDialog,
       showRecoveryDialog,
       registerAuthError

@@ -72,10 +72,11 @@
 
     <!-- Main Content -->
     <v-main class="fill-height">
-      <v-container fluid class="fill-height pa-0 pa-sm-2 pa-md-4">
+      <v-container fluid class="fill-height d-flex align-center justify-center">
         <router-view></router-view>
       </v-container>
     </v-main>
+
 
     <!-- Footer -->
     <!-- <v-footer color="primary" :app="true">
@@ -158,6 +159,9 @@ export default defineComponent({
 .v-container {
   max-width: 100%;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (min-width: 960px) {
@@ -166,9 +170,9 @@ export default defineComponent({
     z-index: 3;
   }
   
-  .v-main {
+  /* .v-main {
     margin-left: 256px;
     width: calc(100% - 256px);
-  }
+  } */
 }
 </style>

@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import { defineComponent, onMounted, watch, ref } from 'vue'
-import { useAuthStore } from './stores/auth'
+import { useAuthStore } from './stores/auth' 
 import { useThemeStore } from './stores/theme'
 import { detectCacheCorruption } from './utils/cache-recovery'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
@@ -26,18 +26,25 @@ export default defineComponent({
   setup() {
     const authStore = useAuthStore()
     const themeStore = useThemeStore()
+    const errorRecovery = ref<InstanceType<typeof AppErrorRecovery> | null>(null)
+    const authRecovery = ref<InstanceType<typeof AuthRecovery> | null>(null)
     
     onMounted(() => {
       // Initialize theme
       themeStore.initializeTheme()
       
-      // Initialize auth store
+      // Initialize auth store with robust error handling
       console.log('App.vue: Initializing auth store')
       authStore.initialize()
-        .catch(error => {
+        .then(success => {
+          if (!success) {
+            console.warn('Auth initialization returned false, showing recovery dialog')
+            showAuthRecoveryIfNeeded()
+          }
+        })
+        .catch((error) => {
           console.error('Error initializing auth store:', error)
-          // This might be a good time to show the recovery dialog
-          showErrorRecoveryIfNeeded()
+          showAuthRecoveryIfNeeded()
         })
       
       // Check for cache corruption
@@ -47,9 +54,6 @@ export default defineComponent({
       }
     })
     
-    // Reference to the error recovery component
-    const errorRecovery = ref<InstanceType<typeof AppErrorRecovery> | null>(null)
-    const authRecovery = ref<InstanceType<typeof AuthRecovery> | null>(null)
     
     // Show error recovery dialog if needed
     const showErrorRecoveryIfNeeded = () => {
@@ -66,10 +70,19 @@ export default defineComponent({
     }
     
     // Handle recovery performed
-    const handleRecovery = () => console.log('Recovery performed')
+    const handleRecovery = () => {
+      console.log('Recovery performed')
+      // Reinitialize auth store after recovery
+      authStore.initialize()
+    }
     
     // Handle auth recovery performed
-    const handleAuthRecovery = () => console.log('Auth recovery performed')
+    const handleAuthRecovery = () => {
+      console.log('Auth recovery performed')
+      // Force reinitialize auth store after auth recovery
+      authStore.initialize()
+        .then(() => console.log('Auth store reinitialized after recovery'))
+    }
     
     // Listen for auth errors
     authStore.$subscribe((_, state) => {

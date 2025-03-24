@@ -14,9 +14,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: localStorage
   }
 })
+
 
 // Connection status monitoring
 let isOffline = false

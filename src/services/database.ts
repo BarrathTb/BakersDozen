@@ -492,43 +492,43 @@ export const db = {
   },
 
   // Generate a random UUID
-  generateId(): string {
-    return uuidv4()
-  },
+  // generateId(): string {
+  //   return uuidv4()
+  // },
   
-  // Clear specific table cache
-  clearTableCache(table: TableName | ViewName): void {
-    console.log(`Clearing cache for ${table}...`)
+  // // Clear specific table cache
+  // clearTableCache(table: TableName | ViewName): void {
+  //   console.log(`Clearing cache for ${table}...`)
     
-    // Clear both versioned and legacy cache keys
-    localStorage.removeItem(`${CACHE_PREFIX}${table}`)
-    localStorage.removeItem(getCacheKey(table))
-    localStorage.removeItem(getCacheKey(`view_${table}`))
-    localStorage.removeItem(`${CACHE_PREFIX}view_${table}`)
-  },
+  //   // Clear both versioned and legacy cache keys
+  //   localStorage.removeItem(`${CACHE_PREFIX}${table}`)
+  //   localStorage.removeItem(getCacheKey(table))
+  //   localStorage.removeItem(getCacheKey(`view_${table}`))
+  //   localStorage.removeItem(`${CACHE_PREFIX}view_${table}`)
+  // },
   
   // Clear cache for testing
-  clearCache(): void {
-    console.log('Clearing all cached data...')
-    const tables: TableName[] = [
-      'users', 'ingredients', 'recipes', 'recipe_ingredients',
-      'bakes', 'deliveries', 'delivery_items', 'removals', 'removal_items'
-    ]
+  // clearCache(): void {
+  //   console.log('Clearing all cached data...')
+  //   const tables: TableName[] = [
+  //     'users', 'ingredients', 'recipes', 'recipe_ingredients',
+  //     'bakes', 'deliveries', 'delivery_items', 'removals', 'removal_items'
+  //   ]
     
-    tables.forEach(table => {
-      this.clearTableCache(table)
-    })
+  //   tables.forEach(table => {
+  //     this.clearTableCache(table)
+  //   })
     
-    const views: ViewName[] = [
-      'inventory_status', 'recipe_details', 'bake_efficiency'
-    ]
+  //   const views: ViewName[] = [
+  //     'inventory_status', 'recipe_details', 'bake_efficiency'
+  //   ]
     
-    views.forEach(view => {
-      this.clearTableCache(view)
-    })
+  //   views.forEach(view => {
+  //     this.clearTableCache(view)
+  //   })
     
-    console.log('Cache cleared')
-  }
+  //   console.log('Cache cleared')
+  // }
 }
 
 // Export types

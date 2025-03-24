@@ -5,9 +5,6 @@ import type { User, Session, createClient } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
 
 export const useAuthStore = defineStore('auth', () => {
-  // Session token key in localStorage
-  const SESSION_TOKEN_KEY = 'supabase.auth.token'
-
   // State
   const user = ref<User | null>(null)
   const loading = ref(false)
@@ -18,39 +15,47 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Initialize the store with the current user from Supabase
   const initialize = async () => {
-    loading.value = true
-    console.log('Initializing auth store...')
+  loading.value = true
+  console.log('Initializing auth store...')
+  
+  try {
+    // First check if there's a session in Supabase
+    const { data, error: sessionError } = await supabase.auth.getSession()
     
-    try {
-      const { data, error: sessionError } = await auth.getSession()
-      
-      console.log('Auth store initialization - session data:', data.session ? 'Session exists' : 'No session')
-      if (sessionError) throw sessionError
+    console.log('Auth store initialization - session data:', data.session ? 
+      `Session exists for ${data.session.user.email}` : 'No session')
+    
+    if (sessionError) throw sessionError
 
-      if (data.session?.user) {
-        const { data: userData, error: userError } = await auth.getUser()
-        if (userError) throw userError
-        
-        user.value = userData.user
-      } else {
-        user.value = null
+    if (data.session?.user) {
+      // If we have a session, get the user data
+      user.value = {
+        id: data.session.user.id,
+        email: data.session.user.email || '',
+        role: data.session.user.user_metadata?.role || 'user',
+        created_at: data.session.user.created_at || new Date().toISOString(),
+        app_metadata: data.session.user.app_metadata || {},
+        user_metadata: data.session.user.user_metadata || {},
+        aud: data.session.user.aud || ''
       }
-      
-      initializationAttempted.value = true
-      return true
-    } catch (err) {
-      console.error('Failed to initialize auth store:', err)
+      console.log('User data loaded from session:', user.value.email)
+    } else {
       user.value = null
-      initializationAttempted.value = true
-      
-      // Try to recover by clearing session token
-      await recoverFromFailedInit()
-      return false
-    } finally {
-      loading.value = false
-      console.log('Auth store initialization complete')
     }
+    
+    initializationAttempted.value = true
+    return true
+  } catch (err) {
+    console.error('Failed to initialize auth store:', err)
+    user.value = null
+    initializationAttempted.value = true
+    return false
+  } finally {
+    loading.value = false
+    console.log('Auth store initialization complete')
   }
+}
+
 
   const getSession = async () => {
     const { data, error } = await auth.getSession()
@@ -63,16 +68,30 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const { user: authUser, error: signInError, session } = await auth.signInWithPassword(email, password)
+      const { data: { user: authUser, session }, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
       if (signInError) throw signInError
-
+      
+await supabase.auth.getSession();
+if
+ (session) {
+    
+console
+.log(
+'User is authenticated:'
+, session.user);
+} 
+else
+ {
+    
+console
+.log(
+'No active session'
+);
+}
       if (authUser) {
         user.value = authUser
-        // Store session in localStorage for persistence
-        if (session) {
-          storeSession(session)
-        }
+
         return { success: true }
       } else {
         return { success: false, message: 'Failed to sign in' }
@@ -83,31 +102,6 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       loading.value = false
     }
-  }
-
-  // Helper function to store session
-  const storeSession = (session: any) => {
-    try {
-      // Store the session data in localStorage
-      localStorage.setItem('auth_user', JSON.stringify(user.value))
-      console.log('Session stored successfully')
-    } catch (err) {
-      console.error('Failed to store session:', err)
-    }
-  }
-
-  // Helper function to restore session
-  const restoreSession = () => {
-    try {
-      const storedUser = localStorage.getItem('auth_user')
-      if (storedUser) {
-        user.value = JSON.parse(storedUser)
-        return true
-      }
-    } catch (err) {
-      console.error('Failed to restore session:', err)
-    }
-    return false
   }
 
   // Sign up
@@ -122,10 +116,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (authUser) {
         user.value = authUser
-        // Store session in localStorage for persistence
-        if (session) {
-          storeSession(session)
-        }
         return { success: true }
       } else {
         return { success: false, message: 'Failed to sign up' }
@@ -149,8 +139,6 @@ export const useAuthStore = defineStore('auth', () => {
       if (signOutError) throw signOutError
 
       user.value = null
-      // Clear stored session
-      localStorage.removeItem('auth_user')
       return { success: true }
     } catch (err) {
       error.value = (err as Error).message
@@ -204,31 +192,25 @@ export const useAuthStore = defineStore('auth', () => {
   let unsubscribe: (() => void) | null = null
 
   const setupAuthListener = () => {
-    console.log('Setting up auth state change listener')
-    unsubscribe = auth.onAuthStateChange(async (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'TOKEN_REFRESHED', session) => {
-      console.log(`Auth state changed: ${event}`, session ? 'Session exists' : 'No session')
-      
-      if (event === 'SIGNED_IN' && session) {
-        const { data, error } = await auth.getUser()
-        if (!error && data.user) {
-          user.value = data.user
-          storeSession(session)
-        }
-      } else if (event === 'SIGNED_OUT') {
-        user.value = null
-        localStorage.removeItem('auth_user')
-      } else if (event === 'USER_UPDATED' && session) {
-        const { data, error } = await auth.getUser()
-        if (!error && data.user) {
-          user.value = data.user
-          storeSession(session)
-        }
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        // Handle token refresh
-        storeSession(session)
-      }
-    })
-  }
+  console.log('Setting up auth state change listener')
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+  unsubscribe = () => subscription.unsubscribe();
+    console.log(`Auth state changed: ${event}`, session ? 
+      `Session exists for ${session.user.email}` : 'No session')
+    
+    if (event === 'SIGNED_IN' && session) {
+      user.value = session.user
+    } else if (event === 'SIGNED_OUT') {
+      user.value = null
+    } else if (event === 'USER_UPDATED' && session) {
+      user.value = session.user
+    } else if (event === 'TOKEN_REFRESHED' && session) {
+      user.value = session.user
+      console.log('Token refreshed successfully')
+    }
+  })
+}
+
 
   // Clean up auth listener
   const cleanupAuthListener = () => {
@@ -243,53 +225,29 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('Attempting to recover from failed initialization...')
     try {
       // Clear any potentially corrupted auth state
-      localStorage.removeItem(SESSION_TOKEN_KEY)
-      localStorage.removeItem('supabase.auth.refreshToken')
-      localStorage.removeItem('auth_user')
+      // Let Supabase handle its own session storage
+      await supabase.auth.signOut({ scope: 'local' })
+      user.value = null
       
       // Try to initialize again
-      await initialize()
-      console.log('Recovery successful')
+      const result = await getSession()
+      if (result.data.session) {
+        const { data, error } = await auth.getUser()
+        if (!error && data?.user) {
+          user.value = data.user
+          console.log('Recovery successful')
+          return true
+        }
+      }
+      return false
     } catch (err) {
       console.error('Recovery failed:', err)
+      return false
     } finally {
       loading.value = false
     }
   }
 
-  // Watch for loading state changes
-  watch(loading, (isLoading) => {
-    console.log('Auth store loading state changed:', isLoading)
-  })
-  
-  // Watch for user state changes
-  watch(user, (newUser) => {
-    if (newUser) {
-      console.log('User state updated:', newUser.email)
-      storeSession({ user: newUser })
-    } else {
-      console.log('User state cleared')
-      localStorage.removeItem('auth_user')
-    }
-  })
-
-  // Try to restore session from localStorage on store creation
-  restoreSession()
-  getSession().then(({ data, error }) => {
-    if (error) {
-      console.error('Error restoring session:', error)
-    } else if (data.session) {
-      console.log('Session restored successfully')
-      user.value = data.session.user
-    }
-    else {
-      console.log('No session found in localStorage')
-    }
-    loading.value = false
-  }
-  )
-
-  
   // Initialize auth listener
   setupAuthListener()
 
@@ -307,7 +265,6 @@ export const useAuthStore = defineStore('auth', () => {
     updatePassword,
     cleanupAuthListener,
     initializationAttempted,
-    recoverFromFailedInit,
-    restoreSession
+    recoverFromFailedInit
   }
 })

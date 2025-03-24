@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="bake-tracker-container">
     <v-form ref="form" v-model="isFormValid">
       <!-- Recipe Selection -->
       <v-card class="mb-4">
@@ -10,53 +10,49 @@
         <v-card-text>
           <v-row>
             <v-col cols="12" md="6">
-              <v-autocomplete
+              <v-combobox
                 v-model="selectedRecipe"
                 :items="recipes"
-                item-text="name"
+                item-title="name"
                 item-value="id"
                 label="Select Recipe"
                 :rules="[v => !!v || 'Recipe is required']"
                 return-object
                 required
-                @change="recipeSelected"
+                @update:model-value="recipeSelected"
               >
-                <template v-slot:item="{ item }">
-                  <v-list-item-content>
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props">
                     <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
                     <v-list-item-subtitle>
                       Expected Yield: {{ item.raw.expected_yield }}
                     </v-list-item-subtitle>
-                  </v-list-item-content>
+                  </v-list-item>
                 </template>
-              </v-autocomplete>
+              </v-combobox>
+
             </v-col>
             <v-col cols="12" md="6">
-              <v-menu
-                ref="bakeDateMenu"
+              <v-text-field
+                v-model="bakeDate"
+                label="Bake Date"
+                prepend-icon="mdi-calendar"
+                readonly
+                @click="openDatePicker"
+                :rules="[v => !!v || 'Bake date is required']"
+                required
+              ></v-text-field>
+              
+              <v-dialog
                 v-model="bakeDateMenu"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
+                width="290px"
               >
-                <template v-slot:activator="{ props }">
-                  <v-text-field
-                    v-model="bakeDate"
-                    label="Bake Date"
-                    prepend-icon="mdi-calendar"
-                    readonly
-                    v-bind="props"
-                    :rules="[v => !!v || 'Bake date is required']"
-                    required
-                  ></v-text-field>
-                </template>
                 <v-date-picker
                   v-model="bakeDate"
-                  @input="bakeDateMenu = false"
-                  :max="new Date().toISOString().substr(0, 10)"
+                  @update:model-value="bakeDateMenu = false"
+                  :max="new Date().toISOString().substring(0, 10)"
                 ></v-date-picker>
-              </v-menu>
+              </v-dialog>
             </v-col>
           </v-row>
         </v-card-text>
@@ -241,7 +237,7 @@
       <template v-slot:actions>
         <v-btn
           text
-          @click="showErrorAlert = false"
+          @click="closeErrorAlert"
         >
           Close
         </v-btn>
@@ -287,7 +283,7 @@ export default defineComponent({
     // Recipe selection
     const recipes = ref<Recipe[]>([])
     const selectedRecipe = ref<Recipe | null>(null)
-    const bakeDate = ref(new Date().toISOString().substr(0, 10))
+    const bakeDate = ref<string>(new Date().toISOString().substring(0, 10))
     const bakeDateMenu = ref(false)
     
     // Recipe ingredients
@@ -342,6 +338,11 @@ export default defineComponent({
       }
       return 'Significantly below expected yield. Process review recommended.'
     })
+    
+    // Open date picker
+    const openDatePicker = () => {
+      bakeDateMenu.value = true
+    }
     
     // Fetch recipes
     const fetchRecipes = async () => {
@@ -424,6 +425,11 @@ export default defineComponent({
       errorMessage.value = message
       showErrorAlert.value = true
     }
+
+    // Close error alert
+    const closeErrorAlert = () => {
+      showErrorAlert.value = false
+    }
     
     // Submit the bake
     const submitBake = async () => {
@@ -480,7 +486,7 @@ export default defineComponent({
     // Reset the form
     const resetForm = () => {
       selectedRecipe.value = null
-      bakeDate.value = new Date().toISOString().substr(0, 10)
+      bakeDate.value = new Date().toISOString().substring(0, 10)
       recipeIngredients.value = []
       actualYield.value = 0
       efficiencyPercentage.value = 0
@@ -504,12 +510,16 @@ export default defineComponent({
     onMounted(() => {
       fetchRecipes()
       setupSubscription()
+      // Ensure date picker is closed on mount
+      bakeDateMenu.value = false
     })
     
     onUnmounted(() => {
       if (unsubscribe) {
         unsubscribe()
       }
+      // Ensure date picker is closed on unmount
+      bakeDateMenu.value = false
     })
     
     return {
@@ -535,9 +545,23 @@ export default defineComponent({
       hasEnoughIngredients,
       recipeSelected,
       getQuantityColor,
+      openDatePicker,
+      closeErrorAlert,
       calculateEfficiency,
       submitBake
     }
   }
 })
 </script>
+
+<style>
+.bake-tracker-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.v-card {
+  margin-bottom: 24px;
+}
+</style>

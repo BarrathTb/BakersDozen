@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { setupGlobalCacheRecovery, attemptCacheRecovery } from './utils/cache-recovery'
 // Import Supabase client first to ensure it's initialized
+import { supabase } from './services/supabase'
 import './services/supabase'
 // import { testSupabaseConnection } from './test-supabase'
 // import { testDataAccess } from './debug-data-access'
@@ -10,7 +11,6 @@ import './assets/main.css'
 import { createPinia } from 'pinia'
 import vuetify from './plugins/vuetify'
 import { registerSW } from 'virtual:pwa-register'
-// import createPersistedState from './plugins/persisted-state'
 
 // Import Supabase client
 import './services/database'
@@ -19,6 +19,13 @@ import './services/auth'
 import App from './App.vue'
 import router from './router'
 
+// Verify Supabase session is properly initialized
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Supabase auth state change in main.ts:', event)
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    console.log('Session refreshed in main.ts')
+  }
+})
 // Test Supabase connection
 // testSupabaseConnection()
 //   .then(success => {
@@ -85,11 +92,6 @@ console.log('Initializing application...')
 const app = createApp(App)
 const pinia = createPinia()
 
-// Configure persisted state with specific options
-// pinia.use(createPersistedState({
-//   prefix: 'bakers-dozen-',
-//   storage: localStorage
-// }))
 
 // Add error handler for Vue errors
 app.config.errorHandler = (err, instance, info) => {
