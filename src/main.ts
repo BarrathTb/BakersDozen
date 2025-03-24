@@ -8,14 +8,11 @@ import './services/supabase'
 import './assets/main.css'
 
 import { createPinia } from 'pinia'
-import { piniaPluginPersistedstate } from 'pinia-plugin-persistedstate'
 import vuetify from './plugins/vuetify'
 import { registerSW } from 'virtual:pwa-register'
+// import createPersistedState from './plugins/persisted-state'
 
 // Import Supabase client
-import './services/supabase'
-
-// Import database and auth services
 import './services/database'
 import './services/auth'
 
@@ -81,10 +78,18 @@ if (needsRecovery) {
   // that the app has recovered from a corrupted state
 }
 
+// Create and configure the app with error handling
+console.log('Initializing application...')
+
 // Create and configure the app
 const app = createApp(App)
 const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+
+// Configure persisted state with specific options
+// pinia.use(createPersistedState({
+//   prefix: 'bakers-dozen-',
+//   storage: localStorage
+// }))
 
 // Add error handler for Vue errors
 app.config.errorHandler = (err, instance, info) => {

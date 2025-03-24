@@ -118,11 +118,15 @@
 import { defineComponent, ref, onMounted, computed, onUnmounted } from 'vue'
 import { db, type Ingredient } from '../services/database'
 import { format } from 'date-fns'
+import { supabase } from '../services/supabase'
 
 export default defineComponent({
   name: 'DashboardView',
   
   setup() {
+
+    
+const session = ref()
     const search = ref('')
     const loading = ref(true)
     const ingredients = ref<Ingredient[]>([])
@@ -190,6 +194,17 @@ export default defineComponent({
     onMounted(() => {
       fetchIngredients()
       setupSubscription()
+      supabase.auth.getSession().then(({ data }) => {
+        session.value = data.session
+
+        
+      })
+    supabase.auth.onAuthStateChange((_, _session) => {
+    session.value = _session
+    })
+  
+
+    
     })
     
     onUnmounted(() => {

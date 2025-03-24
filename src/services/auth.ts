@@ -1,7 +1,7 @@
 // Authentication service using Supabase
 import { supabase } from './supabase'
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js'
-import type { User } from '../types/supabase'
+import type { User, Session } from '@supabase/supabase-js'
+// import type { User } from '../types/supabase'
 
 // Define auth response type
 export interface AuthResponse {
@@ -43,7 +43,10 @@ export const auth = {
               id: user.id,
               email: user.email || '',
               role: 'user',
-              created_at: user.created_at || new Date().toISOString()
+              created_at: user.created_at || new Date().toISOString(),
+              app_metadata: user.app_metadata || {},
+              user_metadata: user.user_metadata || {},
+              aud: user.aud || ''
             }
           },
           error: null
@@ -59,7 +62,10 @@ export const auth = {
           id: user.id,
           email: user.email || '',
           role: profile?.role || 'user',
-          created_at: user.created_at || new Date().toISOString()
+          created_at: user.created_at || new Date().toISOString(),
+          app_metadata: user.app_metadata || {},
+          user_metadata: user.user_metadata || {},
+          aud: user.aud || ''
         }
       },
       error: null
@@ -93,7 +99,10 @@ export const auth = {
         id: data.user.id,
         email: data.user.email || '',
         role: profile?.role || 'user',
-        created_at: data.user.created_at || new Date().toISOString()
+        created_at: data.user.created_at || new Date().toISOString(),
+        app_metadata: data.user.app_metadata || {},
+        user_metadata: data.user.user_metadata || {},
+        aud: data.user.aud || ''
       },
       session: data.session,
       error: null
@@ -138,7 +147,10 @@ export const auth = {
           id: data.user.id,
           email: data.user.email || '',
           role: 'user',
-          created_at: data.user.created_at || new Date().toISOString()
+          created_at: data.user.created_at || new Date().toISOString(),
+          app_metadata: data.user.app_metadata || {},
+          user_metadata: data.user.user_metadata || {},
+          aud: data.user.aud || ''
         },
         session: data.session,
         error: null

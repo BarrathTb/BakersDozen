@@ -3,6 +3,7 @@
     <router-view />
     <pwa-install-prompt />
     <app-error-recovery ref="errorRecovery" @recovery-performed="handleRecovery" />
+    <auth-recovery ref="authRecovery" @recovery-performed="handleAuthRecovery" />
   </v-app>
 </template>
 
@@ -13,12 +14,14 @@ import { useThemeStore } from './stores/theme'
 import { detectCacheCorruption } from './utils/cache-recovery'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import AppErrorRecovery from './components/AppErrorRecovery.vue'
+import AuthRecovery from './components/AuthRecovery.vue'
 
 export default defineComponent({
   name: 'App',
   components: {
-    PwaInstallPrompt, AppErrorRecovery
+    PwaInstallPrompt, AppErrorRecovery, AuthRecovery
   },
+
   
   setup() {
     const authStore = useAuthStore()
@@ -29,6 +32,7 @@ export default defineComponent({
       themeStore.initializeTheme()
       
       // Initialize auth store
+      console.log('App.vue: Initializing auth store')
       authStore.initialize()
         .catch(error => {
           console.error('Error initializing auth store:', error)
@@ -45,6 +49,7 @@ export default defineComponent({
     
     // Reference to the error recovery component
     const errorRecovery = ref<InstanceType<typeof AppErrorRecovery> | null>(null)
+    const authRecovery = ref<InstanceType<typeof AuthRecovery> | null>(null)
     
     // Show error recovery dialog if needed
     const showErrorRecoveryIfNeeded = () => {
@@ -53,11 +58,29 @@ export default defineComponent({
       }
     }
     
+    // Show auth recovery dialog if needed
+    const showAuthRecoveryIfNeeded = () => {
+      if (authRecovery.value) {
+        authRecovery.value.showRecoveryDialog()
+      }
+    }
+    
     // Handle recovery performed
     const handleRecovery = () => console.log('Recovery performed')
+    
+    // Handle auth recovery performed
+    const handleAuthRecovery = () => console.log('Auth recovery performed')
+    
+    // Listen for auth errors
+    authStore.$subscribe((_, state) => {
+      if (state.error && authRecovery.value) {
+        console.log('Auth error detected:', state.error)
+        authRecovery.value.registerAuthError(state.error)
+      }
+    })
 
     return {
-      themeStore, errorRecovery, handleRecovery
+      themeStore, errorRecovery, authRecovery, handleRecovery, handleAuthRecovery
     }
   }
 })
