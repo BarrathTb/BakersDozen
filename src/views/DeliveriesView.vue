@@ -1,22 +1,19 @@
 <template>
   <div>
     <h1 class="text-h4 mb-4">Ingredient Deliveries</h1>
-    
+
     <v-card class="mb-4">
       <v-card-title class="d-flex justify-space-between">
         <div>
           <v-icon left>mdi-truck-delivery</v-icon>
           Delivery History
         </div>
-        <v-btn
-          color="primary"
-          to="/deliveries/new"
-        >
+        <v-btn color="primary" to="/deliveries/new">
           <v-icon left>mdi-plus</v-icon>
           New Delivery
         </v-btn>
       </v-card-title>
-      
+
       <v-card-text>
         <v-data-table
           :headers="headers"
@@ -26,36 +23,27 @@
           class="elevation-1"
           :sort-by="[{ key: 'delivery_date', order: 'desc' }]"
         >
-          <template v-slot:item.delivery_date="{ item }">
+          <template v-slot:[`item.delivery_date`]="{ item }">
             {{ formatDate(item.delivery_date) }}
           </template>
-          
-          <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon
-              small
-              color="primary"
-              @click="viewDetails(item)"
-              title="View Details"
-            >
+
+          <template v-slot:[`item.actions`]="{ item }">
+            <v-btn icon small color="primary" @click="viewDetails(item)" title="View Details">
               <v-icon>mdi-eye</v-icon>
             </v-btn>
           </template>
         </v-data-table>
       </v-card-text>
     </v-card>
-    
+
     <!-- Delivery Details Dialog -->
-    <v-dialog
-      v-model="detailsDialog"
-      max-width="800px"
-    >
+    <v-dialog v-model="detailsDialog" max-width="800px">
       <v-card v-if="selectedDelivery">
         <v-card-title>
           <v-icon left>mdi-truck-delivery</v-icon>
           Delivery Details
         </v-card-title>
-        
+
         <v-card-text>
           <v-row>
             <v-col cols="12" md="4">
@@ -68,11 +56,11 @@
               <strong>Received By:</strong> {{ selectedDelivery.created_by_email }}
             </v-col>
           </v-row>
-          
+
           <v-divider class="my-4"></v-divider>
-          
+
           <h3 class="text-h6 mb-3">Delivered Items</h3>
-          
+
           <v-data-table
             :headers="itemHeaders"
             :items="deliveryItems"
@@ -81,24 +69,19 @@
             class="elevation-1"
             :sort-by="[{ key: 'name' }]"
           >
-            <template v-slot:item.quantity="{ item }">
+            <template v-slot:[`item.quantity`]="{ item }">
               {{ item.quantity }} {{ item.unit }}
             </template>
-            
-            <template v-slot:item.expiry_date="{ item }">
+
+            <template v-slot:[`item.expiry_date`]="{ item }">
               {{ formatDate(item.expiry_date) }}
             </template>
           </v-data-table>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            text
-            @click="detailsDialog = false"
-          >
-            Close
-          </v-btn>
+          <v-btn text @click="detailsDialog = false"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -106,8 +89,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
 import { format } from 'date-fns'
+import { defineComponent, onMounted, onUnmounted, ref } from 'vue'
 import { db } from '../services/database'
 
 interface Delivery {
@@ -116,6 +99,7 @@ interface Delivery {
   supplier: string
   created_by: string
   created_at: string
+  created_by_email?: string // Add this property
 }
 
 interface DeliveryItem {
@@ -125,6 +109,7 @@ interface DeliveryItem {
   quantity: number
   batch_number: string
   expiry_date: string
+  unit: string // Added unit property
 }
 
 interface Ingredient {
@@ -145,63 +130,66 @@ interface User {
 
 export default defineComponent({
   name: 'DeliveriesView',
-  
+
   setup() {
     const loading = ref(true)
-    const deliveries = ref<any[]>([])
+    const deliveries = ref<Delivery[]>([])
     const detailsDialog = ref(false)
-    const selectedDelivery = ref<any>(null)
-    const deliveryItems = ref<any[]>([])
+    const selectedDelivery = ref<Delivery | null>(null)
+    const deliveryItems = ref<DeliveryItem[]>([])
     const loadingItems = ref(false)
-    
+
     const headers = [
       { text: 'Date', value: 'delivery_date' },
       { text: 'Supplier', value: 'supplier' },
       { text: 'Items', value: 'item_count' },
       { text: 'Received By', value: 'created_by_email' },
-      { text: 'Actions', value: 'actions', sortable: false }
+      { text: 'Actions', value: 'actions', sortable: false },
     ]
-    
+
     const itemHeaders = [
       { text: 'Ingredient', value: 'name' },
       { text: 'Quantity', value: 'quantity' },
       { text: 'Batch Number', value: 'batch_number' },
-      { text: 'Expiry Date', value: 'expiry_date' }
+      { text: 'Expiry Date', value: 'expiry_date' },
     ]
-    
+
     // Format date for display
     const formatDate = (dateString: string) => {
       return format(new Date(dateString), 'MMM d, yyyy')
     }
-    
+
     // Fetch deliveries
     const fetchDeliveries = async () => {
       loading.value = true
-      
+
       try {
         const deliveriesData = await db.getAll<'deliveries'>('deliveries')
-        const sortedDeliveriesData = deliveriesData.sort((a, b) => new Date(b.delivery_date).getTime() - new Date(a.delivery_date).getTime())
-        
+        const sortedDeliveriesData = deliveriesData.sort(
+          (a, b) => new Date(b.delivery_date).getTime() - new Date(a.delivery_date).getTime(),
+        )
+
         const deliveryItemsData = await db.getAll<'delivery_items'>('delivery_items')
         const users = await db.getAll<'users'>('users')
-        
+
         // Count items per delivery
         const itemCounts: Record<string, number> = {}
-        deliveryItemsData.forEach(item => {
+        deliveryItemsData.forEach((item) => {
           itemCounts[item.delivery_id] = (itemCounts[item.delivery_id] || 0) + 1
         })
-        
+
         // Transform data
-        deliveries.value = deliveriesData.map(item => {
-          const user = users.find(u => u.id === item.created_by)
-          
+        deliveries.value = deliveriesData.map((item) => {
+          const user = users.find((u) => u.id === item.created_by)
+
           return {
             id: item.id,
             delivery_date: item.delivery_date,
             supplier: item.supplier,
             item_count: itemCounts[item.id] || 0,
             created_by: item.created_by,
-            created_by_email: user?.email || 'Unknown'
+            created_by_email: user?.email || 'Unknown',
+            created_at: item.created_at, // Include the missing property
           }
         })
       } catch (error) {
@@ -210,48 +198,53 @@ export default defineComponent({
         loading.value = false
       }
     }
-    
+
     // View delivery details
-    const viewDetails = (delivery: any) => {
+    const viewDetails = (delivery: Delivery) => {
       selectedDelivery.value = delivery
       detailsDialog.value = true
-      
+
       fetchDeliveryItems(delivery.id)
     }
-    
+
     // Fetch delivery items
     const fetchDeliveryItems = async (deliveryId: string) => {
       loadingItems.value = true
-      
+
       try {
-        const deliveryItemsData = await db.query<'delivery_items'>('delivery_items', 
-          item => item.delivery_id === deliveryId
+        const deliveryItemsData = await db.query<'delivery_items'>(
+          'delivery_items',
+          (item) => item.delivery_id === deliveryId,
         )
-        
+
         const ingredients = await db.getAll<'ingredients'>('ingredients')
-        
+
         // Transform data
-        deliveryItems.value = (await deliveryItemsData).map(item => {
-          const ingredient = ingredients.find(i => i.id === item.ingredient_id)
-          
+        deliveryItems.value = (await deliveryItemsData).map((item) => {
+          const ingredient = ingredients.find((i) => i.id === item.ingredient_id)
+
           if (!ingredient) {
             return {
               id: item.id,
+              delivery_id: item.delivery_id,
+              ingredient_id: item.ingredient_id,
               name: 'Unknown Ingredient',
               quantity: item.quantity,
               unit: '',
               batch_number: item.batch_number,
-              expiry_date: item.expiry_date
+              expiry_date: item.expiry_date,
             }
           }
-          
+
           return {
             id: item.id,
+            delivery_id: item.delivery_id,
+            ingredient_id: item.ingredient_id,
             name: ingredient.name,
             quantity: item.quantity,
             unit: ingredient.unit,
             batch_number: item.batch_number,
-            expiry_date: item.expiry_date
+            expiry_date: item.expiry_date,
           }
         })
       } catch (error) {
@@ -260,34 +253,38 @@ export default defineComponent({
         loadingItems.value = false
       }
     }
-    
+
     // Set up subscription for real-time updates
     let unsubscribe: (() => void) | null = null
-    
+
     const setupSubscription = () => {
       unsubscribe = db.subscribe((table, action, item) => {
         if (table === 'deliveries' || table === 'delivery_items' || table === 'users') {
           fetchDeliveries()
         }
-        
-        if (table === 'delivery_items' && selectedDelivery.value && 
-            action === 'insert' && (item as DeliveryItem).delivery_id === selectedDelivery.value.id) {
+
+        if (
+          table === 'delivery_items' &&
+          selectedDelivery.value &&
+          action === 'insert' &&
+          (item as DeliveryItem).delivery_id === selectedDelivery.value.id
+        ) {
           fetchDeliveryItems(selectedDelivery.value.id)
         }
       })
     }
-    
+
     onMounted(() => {
       fetchDeliveries()
       setupSubscription()
     })
-    
+
     onUnmounted(() => {
       if (unsubscribe) {
         unsubscribe()
       }
     })
-    
+
     return {
       loading,
       deliveries,
@@ -298,8 +295,8 @@ export default defineComponent({
       loadingItems,
       itemHeaders,
       formatDate,
-      viewDetails
+      viewDetails,
     }
-  }
+  },
 })
 </script>

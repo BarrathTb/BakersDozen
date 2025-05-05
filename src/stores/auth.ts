@@ -1,7 +1,7 @@
+import type { User } from '@supabase/supabase-js'
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { auth } from '../services/auth'
-import type { User, Session, createClient } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -15,47 +15,48 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Initialize the store with the current user from Supabase
   const initialize = async () => {
-  loading.value = true
-  console.log('Initializing auth store...')
-  
-  try {
-    // First check if there's a session in Supabase
-    const { data, error: sessionError } = await supabase.auth.getSession()
-    
-    console.log('Auth store initialization - session data:', data.session ? 
-      `Session exists for ${data.session.user.email}` : 'No session')
-    
-    if (sessionError) throw sessionError
+    loading.value = true
+    console.log('Initializing auth store...')
 
-    if (data.session?.user) {
-      // If we have a session, get the user data
-      user.value = {
-        id: data.session.user.id,
-        email: data.session.user.email || '',
-        role: data.session.user.user_metadata?.role || 'user',
-        created_at: data.session.user.created_at || new Date().toISOString(),
-        app_metadata: data.session.user.app_metadata || {},
-        user_metadata: data.session.user.user_metadata || {},
-        aud: data.session.user.aud || ''
+    try {
+      // First check if there's a session in Supabase
+      const { data, error: sessionError } = await supabase.auth.getSession()
+
+      console.log(
+        'Auth store initialization - session data:',
+        data.session ? `Session exists for ${data.session.user.email}` : 'No session',
+      )
+
+      if (sessionError) throw sessionError
+
+      if (data.session?.user) {
+        // If we have a session, get the user data
+        user.value = {
+          id: data.session.user.id,
+          email: data.session.user.email || '',
+          role: data.session.user.user_metadata?.role || 'user',
+          created_at: data.session.user.created_at || new Date().toISOString(),
+          app_metadata: data.session.user.app_metadata || {},
+          user_metadata: data.session.user.user_metadata || {},
+          aud: data.session.user.aud || '',
+        }
+        console.log('User data loaded from session:', user.value.email)
+      } else {
+        user.value = null
       }
-      console.log('User data loaded from session:', user.value.email)
-    } else {
-      user.value = null
-    }
-    
-    initializationAttempted.value = true
-    return true
-  } catch (err) {
-    console.error('Failed to initialize auth store:', err)
-    user.value = null
-    initializationAttempted.value = true
-    return false
-  } finally {
-    loading.value = false
-    console.log('Auth store initialization complete')
-  }
-}
 
+      initializationAttempted.value = true
+      return true
+    } catch (err) {
+      console.error('Failed to initialize auth store:', err)
+      user.value = null
+      initializationAttempted.value = true
+      return false
+    } finally {
+      loading.value = false
+      console.log('Auth store initialization complete')
+    }
+  }
 
   const getSession = async () => {
     const { data, error } = await auth.getSession()
@@ -68,27 +69,19 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const { data: { user: authUser, session }, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      const {
+        data: { user: authUser, session },
+        error: signInError,
+      } = await supabase.auth.signInWithPassword({ email, password })
 
       if (signInError) throw signInError
-      
-await supabase.auth.getSession();
-if
- (session) {
-    
-console
-.log(
-'User is authenticated:'
-, session.user);
-} 
-else
- {
-    
-console
-.log(
-'No active session'
-);
-}
+
+      await supabase.auth.getSession()
+      if (session) {
+        console.log('User is authenticated:', session.user)
+      } else {
+        console.log('No active session')
+      }
       if (authUser) {
         user.value = authUser
 
@@ -110,7 +103,7 @@ console
     error.value = null
 
     try {
-      const { user: authUser, error: signUpError, session } = await auth.signUp(email, password)
+      const { user: authUser, error: signUpError } = await auth.signUp(email, password)
 
       if (signUpError) throw signUpError
 
@@ -174,7 +167,7 @@ console
 
     try {
       const { error: updateError } = await auth.updateUser({
-        password
+        password,
       })
 
       if (updateError) throw updateError
@@ -192,25 +185,28 @@ console
   let unsubscribe: (() => void) | null = null
 
   const setupAuthListener = () => {
-  console.log('Setting up auth state change listener')
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-  unsubscribe = () => subscription.unsubscribe();
-    console.log(`Auth state changed: ${event}`, session ? 
-      `Session exists for ${session.user.email}` : 'No session')
-    
-    if (event === 'SIGNED_IN' && session) {
-      user.value = session.user
-    } else if (event === 'SIGNED_OUT') {
-      user.value = null
-    } else if (event === 'USER_UPDATED' && session) {
-      user.value = session.user
-    } else if (event === 'TOKEN_REFRESHED' && session) {
-      user.value = session.user
-      console.log('Token refreshed successfully')
-    }
-  })
-}
+    console.log('Setting up auth state change listener')
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      unsubscribe = () => subscription.unsubscribe()
+      console.log(
+        `Auth state changed: ${event}`,
+        session ? `Session exists for ${session.user.email}` : 'No session',
+      )
 
+      if (event === 'SIGNED_IN' && session) {
+        user.value = session.user
+      } else if (event === 'SIGNED_OUT') {
+        user.value = null
+      } else if (event === 'USER_UPDATED' && session) {
+        user.value = session.user
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        user.value = session.user
+        console.log('Token refreshed successfully')
+      }
+    })
+  }
 
   // Clean up auth listener
   const cleanupAuthListener = () => {
@@ -228,7 +224,7 @@ console
       // Let Supabase handle its own session storage
       await supabase.auth.signOut({ scope: 'local' })
       user.value = null
-      
+
       // Try to initialize again
       const result = await getSession()
       if (result.data.session) {
@@ -265,6 +261,6 @@ console
     updatePassword,
     cleanupAuthListener,
     initializationAttempted,
-    recoverFromFailedInit
+    recoverFromFailedInit,
   }
 })

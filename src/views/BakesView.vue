@@ -1,22 +1,19 @@
 <template>
   <div>
     <h1 class="text-h4 mb-4">Bake Records</h1>
-    
+
     <v-card class="mb-4">
       <v-card-title class="d-flex justify-space-between">
         <div>
           <v-icon left>mdi-bread-slice</v-icon>
           Bake History
         </div>
-        <v-btn
-          color="primary"
-          to="/bakes/new"
-        >
+        <v-btn color="primary" to="/bakes/new">
           <v-icon left>mdi-plus</v-icon>
           New Bake
         </v-btn>
       </v-card-title>
-      
+
       <v-card-text>
         <v-data-table
           :headers="headers"
@@ -26,46 +23,33 @@
           class="elevation-1"
           :sort-by="[{ key: 'bake_date', order: 'desc' }]"
         >
-          <template v-slot:item.bake_date="{ item }">
+          <template v-slot:[`item.bake_date`]="{ item }">
             {{ formatDate(item.bake_date) }}
           </template>
-          
-          <template v-slot:item.efficiency="{ item }">
-            <v-chip
-              :color="getEfficiencyColor(item.efficiency)"
-              text-color="white"
-              small
-            >
+
+          <template v-slot:[`item.efficiency`]="{ item }">
+            <v-chip :color="getEfficiencyColor(item.efficiency)" text-color="white" small>
               {{ item.efficiency.toFixed(1) }}%
             </v-chip>
           </template>
-          
-          <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon
-              small
-              color="primary"
-              @click="viewDetails(item)"
-              title="View Details"
-            >
+
+          <template v-slot:[`item.actions`]="{ item }">
+            <v-btn icon small color="primary" @click="viewDetails(item)" title="View Details">
               <v-icon>mdi-eye</v-icon>
             </v-btn>
           </template>
         </v-data-table>
       </v-card-text>
     </v-card>
-    
+
     <!-- Bake Details Dialog -->
-    <v-dialog
-      v-model="detailsDialog"
-      max-width="800px"
-    >
+    <v-dialog v-model="detailsDialog" max-width="800px">
       <v-card v-if="selectedBake">
         <v-card-title>
           <v-icon left>mdi-bread-slice</v-icon>
           Bake Details: {{ selectedBake.recipe_name }}
         </v-card-title>
-        
+
         <v-card-text>
           <v-row>
             <v-col cols="12" md="4">
@@ -75,7 +59,7 @@
               <strong>Baker:</strong> {{ selectedBake.created_by_email }}
             </v-col>
             <v-col cols="12" md="4">
-              <strong>Efficiency:</strong> 
+              <strong>Efficiency:</strong>
               <v-chip
                 :color="getEfficiencyColor(selectedBake.efficiency)"
                 text-color="white"
@@ -86,7 +70,7 @@
               </v-chip>
             </v-col>
           </v-row>
-          
+
           <v-row class="mt-2">
             <v-col cols="12" md="6">
               <strong>Expected Yield:</strong> {{ selectedBake.expected_yield }}
@@ -95,11 +79,11 @@
               <strong>Actual Yield:</strong> {{ selectedBake.actual_yield }}
             </v-col>
           </v-row>
-          
+
           <v-divider class="my-4"></v-divider>
-          
+
           <h3 class="text-h6 mb-3">Ingredients Used</h3>
-          
+
           <v-data-table
             :headers="ingredientHeaders"
             :items="bakeIngredients"
@@ -107,11 +91,11 @@
             hide-default-footer
             class="elevation-1"
           >
-            <template v-slot:item.quantity="{ item }">
+            <template v-slot:[`item.quantity`]="{ item }">
               {{ item.quantity }} {{ item.unit }}
             </template>
           </v-data-table>
-          
+
           <v-card outlined class="mt-4" v-if="selectedBake.notes">
             <v-card-title>Notes</v-card-title>
             <v-card-text>
@@ -119,15 +103,10 @@
             </v-card-text>
           </v-card>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            text
-            @click="detailsDialog = false"
-          >
-            Close
-          </v-btn>
+          <v-btn text @click="detailsDialog = false"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -135,17 +114,21 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
 import { format } from 'date-fns'
+import { defineComponent, onMounted, onUnmounted, ref } from 'vue'
 import { db } from '../services/database'
 
 interface Bake {
   id: string
   bake_date: string
   recipe_id: string
+  recipe_name: string // Added property
+  expected_yield: number // Added property
   actual_yield: number
+  efficiency: number // Added property
   notes?: string
   created_by: string
+  created_by_email: string // Added property
   created_at: string
 }
 
@@ -178,19 +161,20 @@ interface Ingredient {
   min_quantity: number
   unit: string
   last_updated: string
+  quantity: number // Added property
 }
 
 export default defineComponent({
   name: 'BakesView',
-  
+
   setup() {
     const loading = ref(true)
-    const bakes = ref<any[]>([])
+    const bakes = ref<Bake[]>([])
     const detailsDialog = ref(false)
-    const selectedBake = ref<any>(null)
-    const bakeIngredients = ref<any[]>([])
+    const selectedBake = ref<Bake | null>(null)
+    const bakeIngredients = ref<Ingredient[]>([])
     const loadingIngredients = ref(false)
-    
+
     const headers = [
       { text: 'Date', value: 'bake_date' },
       { text: 'Recipe', value: 'recipe_name' },
@@ -198,19 +182,19 @@ export default defineComponent({
       { text: 'Actual Yield', value: 'actual_yield' },
       { text: 'Efficiency', value: 'efficiency' },
       { text: 'Baker', value: 'created_by_email' },
-      { text: 'Actions', value: 'actions', sortable: false }
+      { text: 'Actions', value: 'actions', sortable: false },
     ]
-    
+
     const ingredientHeaders = [
       { text: 'Ingredient', value: 'name' },
-      { text: 'Quantity Used', value: 'quantity' }
+      { text: 'Quantity Used', value: 'quantity' },
     ]
-    
+
     // Format date for display
     const formatDate = (dateString: string) => {
       return format(new Date(dateString), 'MMM d, yyyy h:mm a')
     }
-    
+
     // Get color for efficiency
     const getEfficiencyColor = (efficiency: number) => {
       if (efficiency >= 100) return 'success'
@@ -218,23 +202,23 @@ export default defineComponent({
       if (efficiency >= 75) return 'warning'
       return 'error'
     }
-    
+
     // Fetch bakes
     const fetchBakes = async () => {
       loading.value = true
-      
+
       try {
         const bakesData = await db.getAll<'bakes'>('bakes')
         bakesData.sort((a, b) => new Date(b.bake_date).getTime() - new Date(a.bake_date).getTime())
-        
+
         const recipes = await db.getAll<'recipes'>('recipes')
         const users = await db.getAll<'users'>('users')
-        
+
         // Transform data
-        bakes.value = bakesData.map(item => {
-          const recipe = recipes.find(r => r.id === item.recipe_id)
-          const user = users.find(u => u.id === item.created_by)
-          
+        bakes.value = bakesData.map((item) => {
+          const recipe = recipes.find((r) => r.id === item.recipe_id)
+          const user = users.find((u) => u.id === item.created_by)
+
           if (!recipe) {
             return {
               id: item.id,
@@ -244,12 +228,13 @@ export default defineComponent({
               expected_yield: 0,
               actual_yield: item.actual_yield,
               efficiency: 0,
-              notes: item.notes,
+              notes: item.notes ?? undefined,
               created_by: item.created_by,
-              created_by_email: user?.email || 'Unknown'
+              created_by_email: user?.email || 'Unknown',
+              created_at: item.created_at,
             }
           }
-          
+
           return {
             id: item.id,
             bake_date: item.bake_date,
@@ -258,9 +243,10 @@ export default defineComponent({
             expected_yield: recipe.expected_yield,
             actual_yield: item.actual_yield,
             efficiency: (item.actual_yield / recipe.expected_yield) * 100,
-            notes: item.notes,
+            notes: item.notes ?? undefined,
             created_by: item.created_by,
-            created_by_email: user?.email || 'Unknown'
+            created_by_email: user?.email || 'Unknown',
+            created_at: item.created_at,
           }
         })
       } catch (error) {
@@ -269,44 +255,51 @@ export default defineComponent({
         loading.value = false
       }
     }
-    
+
     // View bake details
-    const viewDetails = (bake: any) => {
+    const viewDetails = (bake: Bake) => {
       selectedBake.value = bake
       detailsDialog.value = true
-      
+
       fetchBakeIngredients(bake.recipe_id)
     }
-    
+
     // Fetch bake ingredients
     const fetchBakeIngredients = async (recipeId: string) => {
       loadingIngredients.value = true
-      
+
       try {
-        const recipeIngs = await db.query<'recipe_ingredients'>('recipe_ingredients', 
-          item => item.recipe_id === recipeId
+        const recipeIngs = await db.query<'recipe_ingredients'>(
+          'recipe_ingredients',
+          (item) => item.recipe_id === recipeId,
         )
-        
+
         const ingredients = await db.getAll<'ingredients'>('ingredients')
-        
+
         // Transform data
-        bakeIngredients.value = recipeIngs.map(item => {
-          const ingredient = ingredients.find(i => i.id === item.ingredient_id)
-          
+        bakeIngredients.value = recipeIngs.map((item) => {
+          const ingredient = ingredients.find((i) => i.id === item.ingredient_id)
+
           if (!ingredient) {
             return {
               id: item.id,
               name: 'Unknown Ingredient',
               quantity: item.quantity,
-              unit: ''
+              unit: '',
+              current_quantity: 0,
+              min_quantity: 0,
+              last_updated: '',
             }
           }
-          
+
           return {
             id: item.id,
             name: ingredient.name,
             quantity: item.quantity,
-            unit: ingredient.unit
+            unit: ingredient.unit,
+            current_quantity: ingredient.current_quantity,
+            min_quantity: ingredient.min_quantity,
+            last_updated: ingredient.last_updated,
           }
         })
       } catch (error) {
@@ -315,10 +308,10 @@ export default defineComponent({
         loadingIngredients.value = false
       }
     }
-    
+
     // Set up subscription for real-time updates
     let unsubscribe: (() => void) | null = null
-    
+
     const setupSubscription = () => {
       unsubscribe = db.subscribe((table, action, item) => {
         if (table === 'bakes' || table === 'recipes' || table === 'users') {
@@ -328,18 +321,18 @@ export default defineComponent({
         }
       })
     }
-    
+
     onMounted(() => {
       fetchBakes()
       setupSubscription()
     })
-    
+
     onUnmounted(() => {
       if (unsubscribe) {
         unsubscribe()
       }
     })
-    
+
     return {
       loading,
       bakes,
@@ -351,8 +344,8 @@ export default defineComponent({
       ingredientHeaders,
       formatDate,
       getEfficiencyColor,
-      viewDetails
+      viewDetails,
     }
-  }
+  },
 })
 </script>

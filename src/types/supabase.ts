@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export interface Database {
   public: {
@@ -62,7 +56,7 @@ export interface Database {
           expected_yield: number
           created_by: string
           created_at: string
-          ingredient_count?: number;
+          ingredient_count?: number
         }
         Insert: {
           id?: string
@@ -70,7 +64,7 @@ export interface Database {
           expected_yield: number
           created_by: string
           created_at?: string
-          ingredient_count?: number;
+          ingredient_count?: number
         }
         Update: {
           id?: string
@@ -78,7 +72,7 @@ export interface Database {
           expected_yield?: number
           created_by?: string
           created_at?: string
-          ingredient_count?: number;
+          ingredient_count?: number
         }
       }
       recipe_ingredients: {
@@ -208,18 +202,21 @@ export interface Database {
           removal_id: string
           ingredient_id: string
           quantity: number
+          unit: string
         }
         Insert: {
           id?: string
           removal_id: string
           ingredient_id: string
           quantity: number
+          unit?: string
         }
         Update: {
           id?: string
           removal_id?: string
           ingredient_id?: string
           quantity?: number
+          unit?: string
         }
       }
     }

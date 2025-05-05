@@ -1,26 +1,26 @@
 import { createApp } from 'vue'
-import { setupGlobalCacheRecovery, attemptCacheRecovery } from './utils/cache-recovery'
+import { attemptCacheRecovery, setupGlobalCacheRecovery } from './utils/cache-recovery'
 // Import Supabase client first to ensure it's initialized
-import { supabase } from './services/supabase'
 import './services/supabase'
+import { supabase } from './services/supabase'
 // import { testSupabaseConnection } from './test-supabase'
 // import { testDataAccess } from './debug-data-access'
 
-import './assets/main.css'
-
 import { createPinia } from 'pinia'
-import vuetify from './plugins/vuetify'
 import { registerSW } from 'virtual:pwa-register'
+import VueApexCharts from 'vue3-apexcharts'
+import './assets/main.css'
+import vuetify from './plugins/vuetify'
 
 // Import Supabase client
-import './services/database'
 import './services/auth'
+import './services/database'
 
 import App from './App.vue'
 import router from './router'
 
 // Verify Supabase session is properly initialized
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange((event, _session) => {
   console.log('Supabase auth state change in main.ts:', event)
   if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
     console.log('Session refreshed in main.ts')
@@ -30,7 +30,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 // testSupabaseConnection()
 //   .then(success => {
 //     console.log('Supabase connection test result:', success ? 'SUCCESS' : 'FAILED')
-    
+
 //     // If connection is successful, test data access
 //     if (success) {
 //       return testDataAccess()
@@ -53,7 +53,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 // })
 
 // Register service worker
-const updateSW = registerSW({
+const _updateSW = registerSW({
   onNeedRefresh() {
     console.log('New content available, please refresh.')
     // Optionally show a UI notification to the user
@@ -92,12 +92,11 @@ console.log('Initializing application...')
 const app = createApp(App)
 const pinia = createPinia()
 
-
 // Add error handler for Vue errors
 app.config.errorHandler = (err, instance, info) => {
   console.error('Vue error handler:', err, info)
 }
-
+app.use(VueApexCharts)
 app.use(pinia)
 app.use(router)
 app.use(vuetify)

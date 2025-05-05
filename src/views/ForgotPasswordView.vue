@@ -19,28 +19,16 @@
                 type="email"
                 required
               ></v-text-field>
-              <v-alert
-                v-if="authStore.error"
-                type="error"
-                class="mt-3"
-                dismissible
-              >
+              <v-alert v-if="authStore.error" type="error" class="mt-3" dismissible>
                 {{ authStore.error }}
               </v-alert>
-              <v-alert
-                v-if="successMessage"
-                type="success"
-                class="mt-3"
-                dismissible
-              >
+              <v-alert v-if="successMessage" type="success" class="mt-3" dismissible>
                 {{ successMessage }}
               </v-alert>
             </v-form>
           </v-card-text>
           <v-card-actions>
-            <v-btn variant="text" to="/login">
-              Back to Login
-            </v-btn>
+            <v-btn variant="text" to="/login"> Back to Login </v-btn>
             <v-spacer></v-spacer>
             <v-btn
               color="primary"
@@ -60,41 +48,42 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
+import { VForm } from 'vuetify/components'
 import { useAuthStore } from '../stores/auth'
 
 export default defineComponent({
   name: 'ForgotPasswordView',
-  
+
   setup() {
     const authStore = useAuthStore()
-    
-    const form = ref<any>(null)
+
+    const form = ref<InstanceType<typeof VForm> | null>(null)
     const isFormValid = ref(false)
     const email = ref('')
     const successMessage = ref('')
-    
+
     const emailRules = [
       (v: string) => !!v || 'Email is required',
-      (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid'
+      (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid',
     ]
-    
+
     const resetPassword = async () => {
       if (!isFormValid.value) {
         form.value?.validate()
         return
       }
-      
+
       const result = await authStore.resetPassword(email.value)
-      
+
       if (result.success) {
         successMessage.value = 'Password reset instructions have been sent to your email.'
-        
+
         // Reset form
         email.value = ''
         form.value?.reset()
       }
     }
-    
+
     return {
       authStore,
       form,
@@ -102,8 +91,8 @@ export default defineComponent({
       email,
       successMessage,
       emailRules,
-      resetPassword
+      resetPassword,
     }
-  }
+  },
 })
 </script>

@@ -16,7 +16,7 @@
                 item-title="name"
                 item-value="id"
                 label="Select Recipe"
-                :rules="[v => !!v || 'Recipe is required']"
+                :rules="[(v) => !!v || 'Recipe is required']"
                 return-object
                 required
                 @update:model-value="recipeSelected"
@@ -30,7 +30,6 @@
                   </v-list-item>
                 </template>
               </v-combobox>
-
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field
@@ -39,14 +38,11 @@
                 prepend-icon="mdi-calendar"
                 readonly
                 @click="openDatePicker"
-                :rules="[v => !!v || 'Bake date is required']"
+                :rules="[(v) => !!v || 'Bake date is required']"
                 required
               ></v-text-field>
-              
-              <v-dialog
-                v-model="bakeDateMenu"
-                width="290px"
-              >
+
+              <v-dialog v-model="bakeDateMenu" width="290px">
                 <v-date-picker
                   v-model="bakeDate"
                   @update:model-value="bakeDateMenu = false"
@@ -65,16 +61,11 @@
           Recipe Ingredients
         </v-card-title>
         <v-card-text>
-          <v-alert
-            v-if="!hasEnoughIngredients"
-            type="warning"
-            variant="outlined"
-            class="mb-4"
-          >
+          <v-alert v-if="!hasEnoughIngredients" type="warning" variant="outlined" class="mb-4">
             <v-icon left>mdi-alert</v-icon>
             Not enough ingredients in stock for this recipe!
           </v-alert>
-          
+
           <v-data-table
             :headers="ingredientHeaders"
             :items="recipeIngredients"
@@ -82,11 +73,9 @@
             hide-default-footer
             class="elevation-1"
           >
-            <template v-slot:item.required_quantity="{ item }">
-              {{ item.quantity }} {{ item.unit }}
-            </template>
-            
-            <template v-slot:item.current_quantity="{ item }">
+            <template #item="{ item }"> {{ item.quantity }} {{ item.unit }} </template>
+
+            <template v-slot:[`item.current_quantity`]="{ item }">
               <v-chip
                 :color="getQuantityColor(item.current_quantity, item.quantity)"
                 text-color="white"
@@ -95,20 +84,12 @@
                 {{ item.current_quantity }} {{ item.unit }}
               </v-chip>
             </template>
-            
-            <template v-slot:item.status="{ item }">
-              <v-icon
-                v-if="item.current_quantity >= item.quantity"
-                color="success"
-              >
+
+            <template v-slot:[`item.status`]="{ item }">
+              <v-icon v-if="item.current_quantity >= item.quantity" color="success">
                 mdi-check-circle
               </v-icon>
-              <v-icon
-                v-else
-                color="error"
-              >
-                mdi-alert-circle
-              </v-icon>
+              <v-icon v-else color="error"> mdi-alert-circle </v-icon>
             </template>
           </v-data-table>
         </v-card-text>
@@ -141,15 +122,15 @@
                 step="1"
                 suffix="units"
                 :rules="[
-                  v => !!v || 'Actual yield is required',
-                  v => v > 0 || 'Actual yield must be greater than 0'
+                  (v) => !!v || 'Actual yield is required',
+                  (v) => v > 0 || 'Actual yield must be greater than 0',
                 ]"
                 required
                 @input="calculateEfficiency"
               ></v-text-field>
             </v-col>
           </v-row>
-          
+
           <v-row v-if="actualYield > 0">
             <v-col cols="12">
               <v-card outlined>
@@ -165,7 +146,7 @@
                       <strong>{{ efficiencyPercentage.toFixed(1) }}%</strong>
                     </template>
                   </v-progress-linear>
-                  
+
                   <div class="mt-4 text-body-1">
                     <v-icon :color="efficiencyColor" left>
                       {{ efficiencyIcon }}
@@ -212,44 +193,26 @@
     </v-form>
 
     <!-- Success/Error Alerts -->
-    <v-snackbar
-      v-model="showSuccessAlert"
-      color="success"
-      timeout="5000"
-    >
+    <v-snackbar v-model="showSuccessAlert" color="success" timeout="5000">
       Bake recorded successfully!
       <template v-slot:actions>
-        <v-btn
-          text
-          @click="showSuccessAlert = false"
-        >
-          Close
-        </v-btn>
+        <v-btn text @click="showSuccessAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
 
-    <v-snackbar
-      v-model="showErrorAlert"
-      color="error"
-      timeout="5000"
-    >
+    <v-snackbar v-model="showErrorAlert" color="error" timeout="5000">
       {{ errorMessage }}
       <template v-slot:actions>
-        <v-btn
-          text
-          @click="closeErrorAlert"
-        >
-          Close
-        </v-btn>
+        <v-btn text @click="closeErrorAlert"> Close </v-btn>
       </template>
     </v-snackbar>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, onUnmounted } from 'vue'
-import { useAuthStore } from '../../stores/auth'
+import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
 import { db } from '../../services/database'
+import { useAuthStore } from '../../stores/auth'
 
 interface Recipe {
   id: string
@@ -267,48 +230,48 @@ interface RecipeIngredient {
 
 export default defineComponent({
   name: 'BakeTracker',
-  
+
   emits: ['bake-saved'],
-  
+
   setup(props, { emit }) {
     const authStore = useAuthStore()
-    
-    const form = ref<any>(null)
+
+    const form = ref<HTMLFormElement | null>(null)
     const isFormValid = ref(false)
     const submitting = ref(false)
     const showSuccessAlert = ref(false)
     const showErrorAlert = ref(false)
     const errorMessage = ref('')
-    
+
     // Recipe selection
     const recipes = ref<Recipe[]>([])
     const selectedRecipe = ref<Recipe | null>(null)
     const bakeDate = ref<string>(new Date().toISOString().substring(0, 10))
     const bakeDateMenu = ref(false)
-    
+
     // Recipe ingredients
     const recipeIngredients = ref<RecipeIngredient[]>([])
     const loadingIngredients = ref(false)
-    
+
     // Production tracking
     const actualYield = ref<number>(0)
     const efficiencyPercentage = ref(0)
     const notes = ref('')
-    
+
     const ingredientHeaders = [
       { text: 'Ingredient', value: 'name', align: 'start' as const },
       { text: 'Required', value: 'required_quantity', align: 'start' as const },
       { text: 'In Stock', value: 'current_quantity', align: 'start' as const },
-      { text: 'Status', value: 'status', align: 'center' as const, sortable: false }
+      { text: 'Status', value: 'status', align: 'center' as const, sortable: false },
     ]
-    
+
     // Check if we have enough ingredients for the recipe
     const hasEnoughIngredients = computed(() => {
       return recipeIngredients.value.every(
-        ingredient => ingredient.current_quantity >= ingredient.quantity
+        (ingredient) => ingredient.current_quantity >= ingredient.quantity,
       )
     })
-    
+
     // Determine efficiency color
     const efficiencyColor = computed(() => {
       if (efficiencyPercentage.value >= 100) return 'success'
@@ -316,7 +279,7 @@ export default defineComponent({
       if (efficiencyPercentage.value >= 75) return 'warning'
       return 'error'
     })
-    
+
     // Determine efficiency icon
     const efficiencyIcon = computed(() => {
       if (efficiencyPercentage.value >= 100) return 'mdi-thumb-up'
@@ -324,7 +287,7 @@ export default defineComponent({
       if (efficiencyPercentage.value >= 75) return 'mdi-alert'
       return 'mdi-alert-circle'
     })
-    
+
     // Efficiency message
     const efficiencyMessage = computed(() => {
       if (efficiencyPercentage.value >= 100) {
@@ -338,12 +301,12 @@ export default defineComponent({
       }
       return 'Significantly below expected yield. Process review recommended.'
     })
-    
+
     // Open date picker
     const openDatePicker = () => {
       bakeDateMenu.value = true
     }
-    
+
     // Fetch recipes
     const fetchRecipes = async () => {
       try {
@@ -354,44 +317,45 @@ export default defineComponent({
         showError('Failed to load recipes')
       }
     }
-    
+
     // Fetch recipe ingredients when a recipe is selected
     const recipeSelected = async () => {
       if (!selectedRecipe.value) return
-      
+
       loadingIngredients.value = true
-      
+
       try {
         // Get recipe ingredients
-        const recipeIngs = await db.query<'recipe_ingredients'>('recipe_ingredients', 
-          item => item.recipe_id === selectedRecipe.value!.id
+        const recipeIngs = await db.query<'recipe_ingredients'>(
+          'recipe_ingredients',
+          (item) => item.recipe_id === selectedRecipe.value!.id,
         )
-        
+
         const ingredients = await db.getAll<'ingredients'>('ingredients')
-        
+
         // Transform data for display
-        recipeIngredients.value = recipeIngs.map(item => {
-          const ingredient = ingredients.find(i => i.id === item.ingredient_id)
-          
+        recipeIngredients.value = recipeIngs.map((item) => {
+          const ingredient = ingredients.find((i) => i.id === item.ingredient_id)
+
           if (!ingredient) {
             return {
               id: item.ingredient_id,
               name: 'Unknown',
               quantity: item.quantity,
               current_quantity: 0,
-              unit: ''
+              unit: '',
             }
           }
-          
+
           return {
             id: ingredient.id,
             name: ingredient.name,
             quantity: item.quantity,
             current_quantity: ingredient.current_quantity,
-            unit: ingredient.unit
+            unit: ingredient.unit,
           }
         })
-        
+
         // Set default actual yield to expected yield
         actualYield.value = selectedRecipe.value.expected_yield
         calculateEfficiency()
@@ -402,24 +366,24 @@ export default defineComponent({
         loadingIngredients.value = false
       }
     }
-    
+
     // Calculate efficiency percentage
     const calculateEfficiency = () => {
       if (!selectedRecipe.value || !actualYield.value) {
         efficiencyPercentage.value = 0
         return
       }
-      
+
       efficiencyPercentage.value = (actualYield.value / selectedRecipe.value.expected_yield) * 100
     }
-    
+
     // Get color based on quantity level
     const getQuantityColor = (current: number, required: number) => {
       if (current < required) return 'error'
       if (current < required * 1.5) return 'warning'
       return 'success'
     }
-    
+
     // Show error message
     const showError = (message: string) => {
       errorMessage.value = message
@@ -430,21 +394,21 @@ export default defineComponent({
     const closeErrorAlert = () => {
       showErrorAlert.value = false
     }
-    
+
     // Submit the bake
     const submitBake = async () => {
       if (!isFormValid.value || !selectedRecipe.value || !hasEnoughIngredients.value) {
         form.value?.validate()
         return
       }
-      
+
       if (!authStore.user) {
         showError('You must be logged in to record a bake')
         return
       }
-      
+
       submitting.value = true
-      
+
       try {
         // Insert bake record
         const bakeData = await db.insert('bakes', {
@@ -452,9 +416,9 @@ export default defineComponent({
           actual_yield: actualYield.value,
           bake_date: new Date(bakeDate.value).toISOString(),
           created_by: authStore.user.id,
-          notes: notes.value || null
+          notes: notes.value || null,
         })
-        
+
         // Update ingredient quantities
         for (const item of recipeIngredients.value) {
           const ingredient = await db.getById<'ingredients'>('ingredients', item.id)
@@ -462,27 +426,30 @@ export default defineComponent({
             await db.update('ingredients', {
               id: ingredient.id,
               current_quantity: ingredient.current_quantity - item.quantity,
-              last_updated: new Date().toISOString()
+              last_updated: new Date().toISOString(),
             })
           }
         }
-        
+
         // Show success message
         showSuccessAlert.value = true
-        
+
         // Reset form
         resetForm()
-        
+
         // Emit event
         emit('bake-saved', bakeData.id)
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error submitting bake:', error)
-        showError(error.message || 'Failed to record bake')
+        showError(
+          (error instanceof Error ? error.message : 'An unknown error occurred') ||
+            'Failed to record bake',
+        )
       } finally {
         submitting.value = false
       }
     }
-    
+
     // Reset the form
     const resetForm = () => {
       selectedRecipe.value = null
@@ -493,12 +460,12 @@ export default defineComponent({
       notes.value = ''
       form.value?.reset()
     }
-    
+
     // Set up subscription for real-time updates
     let unsubscribe: (() => void) | null = null
-    
+
     const setupSubscription = () => {
-      unsubscribe = db.subscribe((table, action, item) => {
+      unsubscribe = db.subscribe((table, _action, _item) => {
         if (table === 'recipes') {
           fetchRecipes()
         } else if (table === 'ingredients' && selectedRecipe.value) {
@@ -506,14 +473,14 @@ export default defineComponent({
         }
       })
     }
-    
+
     onMounted(() => {
       fetchRecipes()
       setupSubscription()
       // Ensure date picker is closed on mount
       bakeDateMenu.value = false
     })
-    
+
     onUnmounted(() => {
       if (unsubscribe) {
         unsubscribe()
@@ -521,7 +488,7 @@ export default defineComponent({
       // Ensure date picker is closed on unmount
       bakeDateMenu.value = false
     })
-    
+
     return {
       form,
       isFormValid,
@@ -548,9 +515,9 @@ export default defineComponent({
       openDatePicker,
       closeErrorAlert,
       calculateEfficiency,
-      submitBake
+      submitBake,
     }
-  }
+  },
 })
 </script>
 

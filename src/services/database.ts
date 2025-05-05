@@ -1,17 +1,34 @@
-import { supabase } from './supabase'
-import { getConnectionStatus } from './supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
-import type { 
-  Tables, TableName, User, Ingredient, Recipe, RecipeIngredient, 
-  Bake, Delivery, DeliveryItem, Removal, RemovalItem,
-  Views, ViewName, InventoryStatus, RecipeDetails, BakeEfficiency
+import type {
+  Bake,
+  BakeEfficiency,
+  Delivery,
+  DeliveryItem,
+  Ingredient,
+  InventoryStatus,
+  Recipe,
+  RecipeDetails,
+  RecipeIngredient,
+  Removal,
+  RemovalItem,
+  TableName,
+  Tables,
+  User,
+  ViewName,
+  Views,
 } from '../types/supabase'
+import { getConnectionStatus, supabase } from './supabase'
 
 // Define action types for subscription
 export type Action = 'insert' | 'update' | 'delete'
 
 // Define subscription callback type
-export type SubscriptionCallback = (table: TableName, action: Action, item: any) => void
+export type SubscriptionCallback = (
+  table: TableName,
+  action: Action,
+  item: Tables[TableName]['Row'],
+) => void
 
 // Subscription handlers
 let nextSubscriptionId = 1
@@ -27,7 +44,7 @@ const getCacheKey = (key: string): string => {
 }
 
 // Helper function to safely parse cached data
-const safelyParseCachedData = (cacheKey: string): any | null => {
+const safelyParseCachedData = <T>(cacheKey: string): T | null => {
   try {
     const cachedData = localStorage.getItem(cacheKey)
     if (!cachedData) return null
@@ -41,7 +58,7 @@ const safelyParseCachedData = (cacheKey: string): any | null => {
 }
 
 // Helper function to safely store data in cache
-const safelyStoreCachedData = (cacheKey: string, data: any): void => {
+const safelyStoreCachedData = <T>(cacheKey: string, data: T): void => {
   try {
     localStorage.setItem(cacheKey, JSON.stringify(data))
   } catch (error) {
@@ -55,7 +72,7 @@ export const db = {
   async getAll<T extends TableName>(table: T): Promise<Tables[T]['Row'][]> {
     try {
       console.log(`Fetching all records from ${table}...`)
-      
+
       // Check if we're offline
       if (!getConnectionStatus()) {
         console.log(`Offline mode: returning cached data for ${table}`)
@@ -63,53 +80,55 @@ export const db = {
         const cacheKey = getCacheKey(table)
         const parsedData = safelyParseCachedData(cacheKey)
         if (parsedData) {
-          return parsedData
+          return parsedData as Tables[T]['Row'][]
         }
-        
+
         // Try legacy cache key as fallback
         const legacyData = safelyParseCachedData(`${CACHE_PREFIX}${table}`)
         if (legacyData) {
-          return legacyData
+          return legacyData as Tables[T]['Row'][]
         }
-        
+
         return []
       }
-      
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-      
+
+      const { data, error } = await supabase.from(table).select('*')
+
       if (error) {
         console.error(`Error fetching all records from ${table}:`, error)
         throw error
       }
-      
+
       console.log(`Successfully fetched ${data?.length || 0} records from ${table}`)
-      
+
       // Cache the data with versioned key
       const cacheKey = getCacheKey(table)
       safelyStoreCachedData(cacheKey, data)
-      
+
       return data as Tables[T]['Row'][]
     } catch (error) {
       console.error(`Error fetching all records from ${table}:`, error)
-      
+
       // Return cached data if available
       const cacheKey = getCacheKey(table)
       const parsedData = safelyParseCachedData(cacheKey)
       if (parsedData) {
-        console.log(`Returning ${parsedData.length} cached records for ${table}`)
-        return parsedData
+        console.log(
+          `Returning ${(parsedData as Tables[T]['Row'][]).length} cached records for ${table}`,
+        )
+        return (parsedData as Tables[T]['Row'][]) || []
       }
-      
+
       // Try legacy cache key as fallback
       const legacyKey = `${CACHE_PREFIX}${table}`
       const legacyData = safelyParseCachedData(legacyKey)
       if (legacyData) {
-        console.log(`Returning ${legacyData.length} legacy cached records for ${table}`)
-        return legacyData
+        console.log(
+          `Returning ${(legacyData as Tables[T]['Row'][]).length} legacy cached records for ${table}`,
+        )
+        return legacyData as Tables[T]['Row'][]
       }
-      
+
       console.log(`No cached data available for ${table}, returning empty array`)
       return []
     }
@@ -119,15 +138,17 @@ export const db = {
   async getById<T extends TableName>(table: T, id: string): Promise<Tables[T]['Row'] | null> {
     try {
       console.log(`Fetching record with ID ${id} from ${table}...`)
-      
+
       // Check if we're offline
       if (!getConnectionStatus()) {
         console.log(`Offline mode: looking for cached record with ID ${id} in ${table}`)
         // Try to find in cached data
         const cacheKey = getCacheKey(table)
-        const items = safelyParseCachedData(cacheKey)
+        const items = safelyParseCachedData<Tables[T]['Row'][]>(cacheKey)
         if (items) {
-          const item = items.find((item: any) => item.id === id)
+          const item = Array.isArray(items)
+            ? items.find((item: Tables[T]['Row']) => item.id === id)
+            : null
           if (item) {
             console.log(`Found cached record with ID ${id} in ${table}`)
           } else {
@@ -135,23 +156,21 @@ export const db = {
           }
           return item || null
         }
-        
+
         // Try legacy cache
         const legacyKey = `${CACHE_PREFIX}${table}`
-        const legacyItems = safelyParseCachedData(legacyKey)
+        const legacyItems: Tables[T]['Row'][] = safelyParseCachedData(legacyKey) || []
         if (legacyItems) {
-          return legacyItems.find((item: any) => item.id === id) || null
+          return Array.isArray(legacyItems)
+            ? legacyItems.find((item: Tables[T]['Row']) => item.id === id) || null
+            : null
         }
-        
+
         return null
       }
-      
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .eq('id', id)
-        .single()
-      
+
+      const { data, error } = await supabase.from(table).select('*').eq('id', id).single()
+
       if (error) {
         if (error.code === 'PGRST116') {
           console.log(`No record found with ID ${id} in ${table}`)
@@ -160,32 +179,39 @@ export const db = {
         console.error(`Error fetching record by ID from ${table}:`, error)
         throw error
       }
-      
+
       console.log(`Successfully fetched record with ID ${id} from ${table}`)
       return data as Tables[T]['Row']
     } catch (error) {
       console.error(`Error fetching record by ID from ${table}:`, error)
-      
+
       // Try to find in cached data
       const cacheKey = getCacheKey(table)
-      const items = safelyParseCachedData(cacheKey)
+      const items: Tables[T]['Row'][] = safelyParseCachedData(cacheKey) || []
       if (items) {
-        return items.find((item: any) => item.id === id) || null
+        return Array.isArray(items)
+          ? items.find((item: Tables[T]['Row']) => item.id === id) || null
+          : null
       }
-      
+
       // Try legacy cache
       const legacyKey = `${CACHE_PREFIX}${table}`
-      const legacyItems = safelyParseCachedData(legacyKey)
+      const legacyItems: Tables[T]['Row'][] = safelyParseCachedData(legacyKey) || []
       if (legacyItems) {
-        return legacyItems.find((item: any) => item.id === id) || null
+        return Array.isArray(legacyItems)
+          ? legacyItems.find((item: Tables[T]['Row']) => item.id === id) || null
+          : null
       }
-      
+
       return null
     }
   },
 
   // Query records with a filter function
-  async query<T extends TableName>(table: T, filterFn: (record: Tables[T]['Row']) => boolean): Promise<Tables[T]['Row'][]> {
+  async query<T extends TableName>(
+    table: T,
+    filterFn: (record: Tables[T]['Row']) => boolean,
+  ): Promise<Tables[T]['Row'][]> {
     try {
       console.log(`Querying records from ${table} with filter function...`)
       const allRecords = await this.getAll(table)
@@ -199,51 +225,50 @@ export const db = {
   },
 
   // Insert a record
-  async insert<T extends TableName>(table: T, record: Partial<Tables[T]['Row']>): Promise<Tables[T]['Row']> {
+  async insert<T extends TableName>(
+    table: T,
+    record: Partial<Tables[T]['Row']>,
+  ): Promise<Tables[T]['Row']> {
     try {
       console.log(`Inserting record into ${table}...`, record)
-      
+
       // Check if we're offline
       if (!getConnectionStatus()) {
         throw new Error('Cannot insert records while offline')
       }
-      
+
       // Generate a new ID if not provided
       const newRecord = {
         ...record,
-        id: record.id || uuidv4()
+        id: record.id || uuidv4(),
       }
-      
-      const { data, error } = await supabase
-        .from(table)
-        .insert(newRecord)
-        .select()
-        .single()
-      
+
+      const { data, error } = await supabase.from(table).insert(newRecord).select().single()
+
       if (error) {
         console.error(`Error inserting record into ${table}:`, error)
         throw error
       }
-      
+
       console.log(`Successfully inserted record into ${table} with ID ${data.id}`)
-      
+
       // Update cache
       const cacheKey = getCacheKey(table)
-      const items = safelyParseCachedData(cacheKey) || []
+      const items: Tables[T]['Row'][] = safelyParseCachedData(cacheKey) || []
       items.push(data)
       safelyStoreCachedData(cacheKey, items)
-      
+
       // Update legacy cache if it exists
       const legacyKey = `${CACHE_PREFIX}${table}`
-      const legacyItems = safelyParseCachedData(legacyKey)
+      const legacyItems: Tables[T]['Row'][] = safelyParseCachedData(legacyKey) || []
       if (legacyItems) {
         legacyItems.push(data)
         safelyStoreCachedData(legacyKey, legacyItems)
       }
-      
+
       // Notify subscribers
       this.notifySubscribers(table, 'insert', data)
-      
+
       return data as Tables[T]['Row']
     } catch (error) {
       console.error(`Error inserting record into ${table}:`, error)
@@ -252,54 +277,57 @@ export const db = {
   },
 
   // Update a record
-  async update<T extends TableName>(table: T, record: Partial<Tables[T]['Row']> & { id: string }): Promise<Tables[T]['Row'] | null> {
+  async update<T extends TableName>(
+    table: T,
+    record: Partial<Tables[T]['Row']> & { id: string },
+  ): Promise<Tables[T]['Row'] | null> {
     try {
       console.log(`Updating record in ${table} with ID ${record.id}...`)
-      
+
       // Check if we're offline
       if (!getConnectionStatus()) {
         throw new Error('Cannot update records while offline')
       }
-      
+
       const { data, error } = await supabase
         .from(table)
         .update(record)
         .eq('id', record.id)
         .select()
         .single()
-      
+
       if (error) {
         console.error(`Error updating record in ${table}:`, error)
         throw error
       }
-      
+
       console.log(`Successfully updated record in ${table} with ID ${record.id}`)
-      
+
       // Update cache
       const cacheKey = getCacheKey(table)
-      const items = safelyParseCachedData(cacheKey)
+      const items: Tables[T]['Row'][] = safelyParseCachedData(cacheKey) || []
       if (items) {
-        const index = items.findIndex((item: any) => item.id === record.id)
+        const index = items.findIndex((item: Tables[T]['Row']) => item.id === record.id)
         if (index !== -1) {
           items[index] = { ...items[index], ...data }
           safelyStoreCachedData(cacheKey, items)
         }
       }
-      
+
       // Update legacy cache if it exists
       const legacyKey = `${CACHE_PREFIX}${table}`
-      const legacyItems = safelyParseCachedData(legacyKey)
+      const legacyItems: Tables[T]['Row'][] = safelyParseCachedData(legacyKey) || []
       if (legacyItems) {
-        const index = legacyItems.findIndex((item: any) => item.id === record.id)
+        const index = legacyItems.findIndex((item: Tables[T]['Row']) => item.id === record.id)
         if (index !== -1) {
           legacyItems[index] = { ...legacyItems[index], ...data }
           safelyStoreCachedData(legacyKey, legacyItems)
         }
       }
-      
+
       // Notify subscribers
       this.notifySubscribers(table, 'update', data)
-      
+
       return data as Tables[T]['Row']
     } catch (error) {
       console.error(`Error updating record in ${table}:`, error)
@@ -311,51 +339,50 @@ export const db = {
   async delete<T extends TableName>(table: T, id: string): Promise<boolean> {
     try {
       console.log(`Deleting record from ${table} with ID ${id}...`)
-      
+
       // Check if we're offline
       if (!getConnectionStatus()) {
         throw new Error('Cannot delete records while offline')
       }
-      
+
       // Get the record before deleting it
       const record = await this.getById(table, id)
-      
+
       if (!record) {
         console.log(`No record found with ID ${id} in ${table}, nothing to delete`)
         return false
       }
-      
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('id', id)
-      
+
+      const { error } = await supabase.from(table).delete().eq('id', id)
+
       if (error) {
         console.error(`Error deleting record from ${table}:`, error)
         throw error
       }
-      
+
       console.log(`Successfully deleted record from ${table} with ID ${id}`)
-      
+
       // Update cache
       const cacheKey = getCacheKey(table)
-      const items = safelyParseCachedData(cacheKey)
+      const items: Tables[T]['Row'][] = safelyParseCachedData(cacheKey) || []
       if (items) {
-        const filteredItems = items.filter((item: any) => item.id !== id)
+        const filteredItems = items.filter((item: Tables[T]['Row']) => item.id !== id)
         safelyStoreCachedData(cacheKey, filteredItems)
       }
-      
+
       // Update legacy cache if it exists
       const legacyKey = `${CACHE_PREFIX}${table}`
       const legacyItems = safelyParseCachedData(legacyKey)
       if (legacyItems) {
-        const filteredItems = legacyItems.filter((item: any) => item.id !== id)
+        const filteredItems = (Array.isArray(legacyItems) ? legacyItems : []).filter(
+          (item: Tables[T]['Row']) => item.id !== id,
+        )
         safelyStoreCachedData(legacyKey, filteredItems)
       }
-      
+
       // Notify subscribers
       this.notifySubscribers(table, 'delete', record)
-      
+
       return true
     } catch (error) {
       console.error(`Error deleting record from ${table}:`, error)
@@ -367,7 +394,7 @@ export const db = {
   async getView<T extends ViewName>(view: T): Promise<Views[T]['Row'][]> {
     try {
       console.log(`Fetching data from view ${view}...`)
-      
+
       // Check if we're offline
       if (!getConnectionStatus()) {
         console.log(`Offline mode: returning cached data for view ${view}`)
@@ -375,52 +402,50 @@ export const db = {
         const cacheKey = getCacheKey(`view_${view}`)
         const parsedData = safelyParseCachedData(cacheKey)
         if (parsedData) {
-          return parsedData
+          return parsedData as Views[T]['Row'][]
         }
-        
+
         // Try legacy cache
         const legacyKey = `${CACHE_PREFIX}view_${view}`
         const legacyData = safelyParseCachedData(legacyKey)
         if (legacyData) {
-          return legacyData
+          return legacyData as Views[T]['Row'][]
         }
-        
+
         return []
       }
-      
-      const { data, error } = await supabase
-        .from(view)
-        .select('*')
-      
+
+      const { data, error } = await supabase.from(view).select('*')
+
       if (error) {
         console.error(`Error fetching data from view ${view}:`, error)
         throw error
       }
-      
+
       console.log(`Successfully fetched ${data?.length || 0} records from view ${view}`)
-      
+
       // Cache the data
       const cacheKey = getCacheKey(`view_${view}`)
       safelyStoreCachedData(cacheKey, data)
-      
+
       return data as Views[T]['Row'][]
     } catch (error) {
       console.error(`Error fetching data from view ${view}:`, error)
-      
+
       // Return cached data if available
       const cacheKey = getCacheKey(`view_${view}`)
       const parsedData = safelyParseCachedData(cacheKey)
       if (parsedData) {
-        return parsedData
+        return parsedData as Views[T]['Row'][]
       }
-      
+
       // Try legacy cache
       const legacyKey = `${CACHE_PREFIX}view_${view}`
       const legacyData = safelyParseCachedData(legacyKey)
       if (legacyData) {
-        return legacyData
+        return legacyData as Views[T]['Row'][]
       }
-      
+
       return []
     }
   },
@@ -430,53 +455,60 @@ export const db = {
     console.log('Setting up subscription to database changes...')
     const id = nextSubscriptionId++
     subscriptions[id] = callback
-    
+
     // Set up Supabase realtime subscriptions
-    const channels: any[] = []
-    
+    const channels: RealtimeChannel[] = []
+
     // Subscribe to each table
     const tables: TableName[] = [
-      'users', 'ingredients', 'recipes', 'recipe_ingredients',
-      'bakes', 'deliveries', 'delivery_items', 'removals', 'removal_items'
+      'users',
+      'ingredients',
+      'recipes',
+      'recipe_ingredients',
+      'bakes',
+      'deliveries',
+      'delivery_items',
+      'removals',
+      'removal_items',
     ]
-    
-    tables.forEach(table => {
+
+    tables.forEach((table) => {
       console.log(`Setting up realtime subscription for table ${table}...`)
       const channel = supabase
         .channel(`${table}-changes`)
         .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
           console.log(`Received realtime update for ${table}:`, payload)
           // Map Supabase events to our action types
-          let action: Action;
+          let action: Action
           switch (payload.eventType) {
             case 'INSERT':
-              action = 'insert';
-              callback(table, action, payload.new);
-              break;
+              action = 'insert'
+              callback(table, action, payload.new as Tables[typeof table]['Row'])
+              break
             case 'UPDATE':
-              action = 'update';
-              callback(table, action, payload.new);
-              break;
+              action = 'update'
+              callback(table, action, payload.new as Tables[typeof table]['Row'])
+              break
             case 'DELETE':
-              action = 'delete';
-              callback(table, action, payload.old);
-              break;
+              action = 'delete'
+              callback(table, action, payload.old as Tables[typeof table]['Row'])
+              break
           }
         })
         .subscribe()
-      
+
       channels.push(channel)
     })
-    
+
     console.log('Subscription setup complete')
-    
+
     // Return unsubscribe function
     return () => {
       console.log('Removing subscription...')
       delete subscriptions[id]
-      
+
       // Remove Supabase channels
-      channels.forEach(channel => {
+      channels.forEach((channel) => {
         supabase.removeChannel(channel)
       })
       console.log('Subscription removed')
@@ -486,7 +518,7 @@ export const db = {
   // Notify subscribers of changes
   notifySubscribers<T extends TableName>(table: T, action: Action, record: Tables[T]['Row']): void {
     console.log(`Notifying subscribers of ${action} on ${table}:`, record)
-    Object.values(subscriptions).forEach(callback => {
+    Object.values(subscriptions).forEach((callback) => {
       callback(table, action, record)
     })
   },
@@ -495,18 +527,18 @@ export const db = {
   // generateId(): string {
   //   return uuidv4()
   // },
-  
+
   // // Clear specific table cache
   // clearTableCache(table: TableName | ViewName): void {
   //   console.log(`Clearing cache for ${table}...`)
-    
+
   //   // Clear both versioned and legacy cache keys
   //   localStorage.removeItem(`${CACHE_PREFIX}${table}`)
   //   localStorage.removeItem(getCacheKey(table))
   //   localStorage.removeItem(getCacheKey(`view_${table}`))
   //   localStorage.removeItem(`${CACHE_PREFIX}view_${table}`)
   // },
-  
+
   // Clear cache for testing
   // clearCache(): void {
   //   console.log('Clearing all cached data...')
@@ -514,26 +546,35 @@ export const db = {
   //     'users', 'ingredients', 'recipes', 'recipe_ingredients',
   //     'bakes', 'deliveries', 'delivery_items', 'removals', 'removal_items'
   //   ]
-    
+
   //   tables.forEach(table => {
   //     this.clearTableCache(table)
   //   })
-    
+
   //   const views: ViewName[] = [
   //     'inventory_status', 'recipe_details', 'bake_efficiency'
   //   ]
-    
+
   //   views.forEach(view => {
   //     this.clearTableCache(view)
   //   })
-    
+
   //   console.log('Cache cleared')
   // }
 }
 
 // Export types
 export type {
-  User, Ingredient, Recipe, RecipeIngredient, 
-  Bake, Delivery, DeliveryItem, Removal, RemovalItem,
-  InventoryStatus, RecipeDetails, BakeEfficiency
+  Bake,
+  BakeEfficiency,
+  Delivery,
+  DeliveryItem,
+  Ingredient,
+  InventoryStatus,
+  Recipe,
+  RecipeDetails,
+  RecipeIngredient,
+  Removal,
+  RemovalItem,
+  User,
 }

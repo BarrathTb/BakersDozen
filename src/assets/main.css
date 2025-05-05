@@ -48,7 +48,7 @@ a,
 
 @media (min-width: 960px) {
   .v-container {
-    padding: 32px;
+    padding: 24px;
   }
 }
 
@@ -63,6 +63,7 @@ a,
 .v-autocomplete,
 .v-textarea {
   width: 100%;
+  border-color: #e78b35;
 }
 
 /* Responsive grid */

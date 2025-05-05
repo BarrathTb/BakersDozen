@@ -1,15 +1,15 @@
 <template>
   <div>
     <h1 class="text-h4 mb-4">New Removal</h1>
-    
+
     <v-card>
       <v-card-title>
         <v-icon start>mdi-minus-circle</v-icon>
         Record Ingredient Removal
       </v-card-title>
-      
+
       <v-divider></v-divider>
-      
+
       <v-card-text class="pt-4">
         <v-form ref="form" v-model="isFormValid">
           <!-- Removal Information -->
@@ -19,7 +19,7 @@
                 v-model="reason"
                 :items="reasonOptions"
                 label="Removal Reason"
-                :rules="[v => !!v || 'Reason is required']"
+                :rules="[(v) => !!v || 'Reason is required']"
                 required
               ></v-select>
             </v-col>
@@ -37,7 +37,7 @@
                     prepend-icon="mdi-calendar"
                     readonly
                     v-bind="props"
-                    :rules="[v => !!v || 'Removal date is required']"
+                    :rules="[(v) => !!v || 'Removal date is required']"
                     required
                   ></v-text-field>
                 </template>
@@ -49,7 +49,7 @@
               </v-menu>
             </v-col>
           </v-row>
-          
+
           <!-- Ingredient Selection -->
           <v-card outlined class="mt-4 mb-4">
             <v-card-title>
@@ -77,14 +77,14 @@
                     hide-details
                   ></v-text-field>
                 </template>
-                
-                <template v-slot:item.current_quantity="{ item }">
+
+                <template v-slot:[`item.current_quantity`]="{ item }">
                   {{ item.current_quantity }} {{ item.unit }}
                 </template>
               </v-data-table>
             </v-card-text>
           </v-card>
-          
+
           <!-- Quantity Adjustments -->
           <v-card outlined class="mb-4" v-if="selectedIngredients.length > 0">
             <v-card-title>
@@ -92,14 +92,10 @@
               Quantity Adjustments
             </v-card-title>
             <v-card-text>
-              <v-alert
-                type="warning"
-                text:true
-                class="mb-4"
-              >
+              <v-alert type="warning" text:true class="mb-4">
                 Please specify the quantity to remove for each selected ingredient.
               </v-alert>
-              
+
               <v-row
                 v-for="ingredient in selectedIngredients"
                 :key="ingredient.id"
@@ -121,9 +117,10 @@
                     :max="ingredient.current_quantity"
                     step="0.01"
                     :rules="[
-                      v => !!v || 'Quantity is required',
-                      v => v > 0 || 'Quantity must be greater than 0',
-                      v => v <= ingredient.current_quantity || 'Cannot remove more than available'
+                      (v) => !!v || 'Quantity is required',
+                      (v) => v > 0 || 'Quantity must be greater than 0',
+                      (v) =>
+                        v <= ingredient.current_quantity || 'Cannot remove more than available',
                     ]"
                     required
                   ></v-text-field>
@@ -143,21 +140,18 @@
           </v-card>
         </v-form>
       </v-card-text>
-      
+
       <v-divider></v-divider>
-      
+
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
-          @click="cancel"
-        >
-          Cancel
-        </v-btn>
+        <v-btn variant="text" @click="cancel"> Cancel </v-btn>
         <v-btn
           color="primary"
           :loading="submitting"
-          :disabled="!isFormValid || selectedIngredients.length === 0 || !isValidQuantities || submitting"
+          :disabled="
+            !isFormValid || selectedIngredients.length === 0 || !isValidQuantities || submitting
+          "
           @click="submitRemoval"
         >
           <v-icon start>mdi-content-save</v-icon>
@@ -165,45 +159,28 @@
         </v-btn>
       </v-card-actions>
     </v-card>
-    
+
     <!-- Success/Error Alerts -->
-    <v-snackbar
-      v-model="showSuccessAlert"
-      color="success"
-      timeout="5000"
-    >
+    <v-snackbar v-model="showSuccessAlert" color="success" timeout="5000">
       Removal recorded successfully!
       <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="showSuccessAlert = false"
-        >
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="showSuccessAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
 
-    <v-snackbar
-      v-model="showErrorAlert"
-      color="error"
-      timeout="5000"
-    >
+    <v-snackbar v-model="showErrorAlert" color="error" timeout="5000">
       {{ errorMessage }}
       <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="showErrorAlert = false"
-        >
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="showErrorAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { VForm } from 'vuetify/components'
 import { supabase } from '../services/supabase'
 import { useAuthStore } from '../stores/auth'
 
@@ -217,7 +194,7 @@ interface Ingredient {
 const router = useRouter()
 const authStore = useAuthStore()
 
-const form = ref<any>(null)
+const form = ref<InstanceType<typeof VForm> | null>(null)
 const isFormValid = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
@@ -230,7 +207,7 @@ const reason = ref('')
 const reasonOptions = [
   { title: 'Waste/Expired', value: 'waste' },
   { title: 'Used for Sale', value: 'sale' },
-  { title: 'Transferred', value: 'transfer' }
+  { title: 'Transferred', value: 'transfer' },
 ]
 const removalDate = ref(new Date().toISOString().substr(0, 10))
 const removalDateMenu = ref(false)
@@ -244,36 +221,32 @@ const removalQuantities = reactive<Record<string, number>>({})
 const headers = [
   { title: 'Name', key: 'name' },
   { title: 'Current Quantity', key: 'current_quantity' },
-  { title: 'Unit', key: 'unit' }
+  { title: 'Unit', key: 'unit' },
 ]
 
 // Validate that all selected ingredients have valid quantities
 const isValidQuantities = computed(() => {
-  return selectedIngredients.value.every(ingredient => {
+  return selectedIngredients.value.every((ingredient) => {
     const quantity = removalQuantities[ingredient.id]
-    return (
-      quantity !== undefined &&
-      quantity > 0 &&
-      quantity <= ingredient.current_quantity
-    )
+    return quantity !== undefined && quantity > 0 && quantity <= ingredient.current_quantity
   })
 })
 
 // Fetch ingredients
 const fetchIngredients = async () => {
   loading.value = true
-  
+
   try {
     const { data, error } = await supabase
       .from('ingredients')
       .select('id, name, current_quantity, unit')
       .gt('current_quantity', 0) // Only show ingredients with stock
       .order('name')
-    
+
     if (error) throw error
-    
+
     ingredients.value = data || []
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching ingredients:', error)
     showError('Failed to load ingredients')
   } finally {
@@ -293,14 +266,14 @@ const submitRemoval = async () => {
     form.value?.validate()
     return
   }
-  
+
   if (!authStore.user) {
     showError('You must be logged in to submit a removal')
     return
   }
-  
+
   submitting.value = true
-  
+
   try {
     // Insert removal record
     const { data: removalData, error: removalError } = await supabase
@@ -308,36 +281,37 @@ const submitRemoval = async () => {
       .insert({
         reason: reason.value,
         removal_date: new Date(removalDate.value).toISOString(),
-        created_by: authStore.user.id
+        created_by: authStore.user.id,
       })
       .select()
       .single()
-    
+
     if (removalError) throw removalError
-    
+
     // Insert removal items
-    const removalItemsToInsert = selectedIngredients.value.map(ingredient => ({
+    const removalItemsToInsert = selectedIngredients.value.map((ingredient) => ({
       removal_id: removalData.id,
       ingredient_id: ingredient.id,
-      quantity: removalQuantities[ingredient.id]
+      quantity: removalQuantities[ingredient.id],
     }))
-    
-    const { error: itemsError } = await supabase
-      .from('removal_items')
-      .insert(removalItemsToInsert)
-    
+
+    const { error: itemsError } = await supabase.from('removal_items').insert(removalItemsToInsert)
+
     if (itemsError) throw itemsError
-    
+
     // Show success message
     showSuccessAlert.value = true
-    
+
     // Navigate to removals list after a delay
     setTimeout(() => {
       router.push('/removals')
     }, 1500)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error submitting removal:', error)
-    showError(error.message || 'Failed to submit removal')
+    showError(
+      (error instanceof Error ? error.message : 'An unknown error occurred') ||
+        'Failed to submit removal',
+    )
   } finally {
     submitting.value = false
   }
@@ -350,15 +324,15 @@ const cancel = () => {
 
 // Initialize default removal quantities when ingredients are selected
 watch(selectedIngredients, (newVal) => {
-  newVal.forEach(ingredient => {
+  newVal.forEach((ingredient) => {
     if (removalQuantities[ingredient.id] === undefined) {
       removalQuantities[ingredient.id] = ingredient.current_quantity / 2
     }
   })
-  
+
   // Remove quantities for deselected ingredients
-  Object.keys(removalQuantities).forEach(id => {
-    if (!newVal.some(ingredient => ingredient.id === id)) {
+  Object.keys(removalQuantities).forEach((id) => {
+    if (!newVal.some((ingredient) => ingredient.id === id)) {
       delete removalQuantities[id]
     }
   })

@@ -4,8 +4,12 @@
     <v-app-bar color="primary">
       <template v-slot:prepend>
         <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+        <v-avatar class="ml-2" size="36" tile>
+          <v-img :src="logo" alt="Dough Tracker logo" contain></v-img>
+        </v-avatar>
       </template>
-      <v-toolbar-title>Bakers Dozen</v-toolbar-title>
+
+      <v-toolbar-title>Dough Tracker</v-toolbar-title>
       <v-spacer></v-spacer>
       <template v-slot:append>
         <v-btn icon @click="toggleTheme">
@@ -34,40 +38,88 @@
     </v-app-bar>
 
     <!-- Navigation Drawer -->
-    <v-navigation-drawer v-model="drawer" :permanent="$vuetify.display.mdAndUp" :temporary="$vuetify.display.smAndDown" width="256">
+    <v-navigation-drawer
+      v-model="drawer"
+      :permanent="$vuetify.display.mdAndUp"
+      :temporary="$vuetify.display.smAndDown"
+      width="256"
+    >
       <v-list>
-        <v-list-item to="/" :active="$route.path === '/'" color="primary" prepend-icon="mdi-view-dashboard">
+        <v-list-item
+          to="/"
+          :active="$route.path === '/'"
+          color="primary"
+          prepend-icon="mdi-view-dashboard"
+        >
           Dashboard
         </v-list-item>
 
-        <v-list-item to="/inventory" :active="$route.path.startsWith('/inventory')" color="primary" prepend-icon="mdi-package-variant-closed">
+        <v-list-item
+          to="/inventory"
+          :active="$route.path.startsWith('/inventory')"
+          color="primary"
+          prepend-icon="mdi-package-variant-closed"
+        >
           Inventory
         </v-list-item>
 
-        <v-list-item to="/deliveries" :active="$route.path.startsWith('/deliveries')" color="primary" prepend-icon="mdi-truck-delivery">
+        <v-list-item
+          to="/deliveries"
+          :active="$route.path.startsWith('/deliveries')"
+          color="primary"
+          prepend-icon="mdi-truck-delivery"
+        >
           Deliveries
         </v-list-item>
 
-        <v-list-item to="/removals" :active="$route.path.startsWith('/removals')" color="primary" prepend-icon="mdi-minus-circle">
+        <v-list-item
+          to="/removals"
+          :active="$route.path.startsWith('/removals')"
+          color="primary"
+          prepend-icon="mdi-minus-circle"
+        >
           Removals
         </v-list-item>
 
-        <v-list-item to="/bakes" :active="$route.path.startsWith('/bakes')" color="primary" prepend-icon="mdi-bread-slice">
+        <v-list-item
+          to="/bakes"
+          :active="$route.path.startsWith('/bakes')"
+          color="primary"
+          prepend-icon="mdi-bread-slice"
+        >
           Bakes
         </v-list-item>
 
-        <v-list-item to="/recipes" :active="$route.path.startsWith('/recipes')" color="primary" prepend-icon="mdi-book-open-variant">
+        <v-list-item
+          to="/recipes"
+          :active="$route.path.startsWith('/recipes')"
+          color="primary"
+          prepend-icon="mdi-book-open-variant"
+        >
           Recipes
         </v-list-item>
 
-        <v-list-item to="/reports" :active="$route.path.startsWith('/reports')" color="primary" prepend-icon="mdi-chart-bar">
+        <v-list-item
+          to="/reports"
+          :active="$route.path.startsWith('/reports')"
+          color="primary"
+          prepend-icon="mdi-chart-bar"
+        >
           Reports
         </v-list-item>
 
-        <v-list-item v-if="isAdmin" to="/users" :active="$route.path.startsWith('/users')" color="primary" prepend-icon="mdi-account-group">
+        <v-list-item
+          v-if="isAdmin"
+          to="/users"
+          :active="$route.path.startsWith('/users')"
+          color="primary"
+          prepend-icon="mdi-account-group"
+        >
           User Management
         </v-list-item>
       </v-list>
+
+      <v-img class="drawer-image mx-auto" :src="logo" alt="Dough Tracker logo" contain></v-img>
     </v-navigation-drawer>
 
     <!-- Main Content -->
@@ -77,13 +129,10 @@
       </v-container>
     </v-main>
 
-
     <!-- Footer -->
     <!-- <v-footer color="primary" :app="true">
   <span>&copy; {{ new Date().getFullYear() }} Bakers Dozen</span>
 </v-footer> -->
-
-
   </v-app>
 </template>
 
@@ -92,20 +141,21 @@ import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
+import appLogo from '../assets/images/logos/dough-tracker-logo.png'
 
 export default defineComponent({
   name: 'MainLayout',
-  
+
   setup() {
     const drawer = ref(false)
     const userMenu = ref(false)
     const router = useRouter()
     const authStore = useAuthStore()
     const themeStore = useThemeStore()
-
+    const logo = appLogo
     const user = computed(() => authStore.user)
     const isAdmin = computed(() => authStore.isAdmin)
-    const userRole = computed(() => isAdmin.value ? 'Admin' : 'User')
+    const userRole = computed(() => (isAdmin.value ? 'Admin' : 'User'))
     const isDarkMode = computed(() => themeStore.isDarkMode)
 
     // Close drawer on mobile when route changes
@@ -118,7 +168,7 @@ export default defineComponent({
     // Set drawer state based on screen size
     onMounted(() => {
       drawer.value = window.innerWidth >= 960
-      
+
       // Add resize listener
       window.addEventListener('resize', () => {
         drawer.value = window.innerWidth >= 960
@@ -143,9 +193,10 @@ export default defineComponent({
       themeStore,
       isDarkMode,
       logout,
-      toggleTheme
+      logo,
+      toggleTheme,
     }
-  }
+  },
 })
 </script>
 
@@ -169,10 +220,15 @@ export default defineComponent({
     position: fixed !important;
     z-index: 3;
   }
-  
-  /* .v-main {
-    margin-left: 256px;
-    width: calc(100% - 256px);
-  } */
+
+  .drawer-image {
+    /* position at bottom of screen */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+  }
 }
 </style>

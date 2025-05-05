@@ -1,11 +1,11 @@
-<template>
+<template :theme="themeStore.currentTheme">
   <div>
     <v-card>
       <v-card-title>
         <v-icon left>mdi-file-chart</v-icon>
         Generate Reports
       </v-card-title>
-      
+
       <v-card-text>
         <v-form ref="form" v-model="isFormValid">
           <!-- Report Type Selection -->
@@ -13,76 +13,61 @@
             v-model="reportType"
             :items="reportTypes"
             label="Report Type"
-            :rules="[v => !!v || 'Report type is required']"
+            :rules="[(v) => !!v || 'Report type is required']"
             required
             @change="resetResults"
           ></v-select>
-          
+
           <!-- Date Range Selection -->
           <v-row>
             <v-col cols="12" md="6">
-              <v-menu
-                ref="startDateMenu"
-                v-model="startDateMenu"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
+              <label>Start Date</label>
+              <DatePicker
+                v-model="startDate"
+                teleport-to="body"
+                :is-dark="isDarkMode"
+                :attributes="attributes"
               >
-                <template v-slot:activator="{ props }">
+                <template #default="{ inputValue, inputEvents }">
                   <v-text-field
                     v-model="startDate"
+                    :value="inputValue"
+                    v-on="inputEvents"
                     label="Start Date"
                     prepend-icon="mdi-calendar"
-                    readonly
-                    v-bind="props"
-                    :rules="[v => !!v || 'Start date is required']"
+                    :error-messages="!startDate ? ['Start date is required'] : []"
                     required
                   ></v-text-field>
                 </template>
-                <v-date-picker
-                  v-model="startDate"
-                  @input="startDateMenu = false"
-                  :max="endDate || new Date().toISOString().substr(0, 10)"
-                ></v-date-picker>
-              </v-menu>
+              </DatePicker>
             </v-col>
+
             <v-col cols="12" md="6">
-              <v-menu
-                ref="endDateMenu"
-                v-model="endDateMenu"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
+              <label>End Date</label>
+              <DatePicker
+                :is-dark="isDarkMode"
+                class="datepicker"
+                v-model="endDate"
+                :attributes="attributesEndDate"
               >
-                <template v-slot:activator="{ props }">
+                <template #default="{ inputValue, inputEvents }">
                   <v-text-field
                     v-model="endDate"
+                    :value="inputValue"
+                    v-on="inputEvents"
                     label="End Date"
                     prepend-icon="mdi-calendar"
-                    readonly
-                    v-bind="props"
-                    :rules="[
-                      v => !!v || 'End date is required',
-                      v => !startDate || new Date(v) >= new Date(startDate) || 'End date must be after start date'
-                    ]"
+                    :error-messages="!endDate ? ['End date is required'] : []"
                     required
                   ></v-text-field>
                 </template>
-                <v-date-picker
-                  v-model="endDate"
-                  @input="endDateMenu = false"
-                  :min="startDate"
-                  :max="new Date().toISOString().substr(0, 10)"
-                ></v-date-picker>
-              </v-menu>
+              </DatePicker>
             </v-col>
           </v-row>
-          
+
           <!-- Additional Filters -->
           <div v-if="reportType === 'inventory-movement'">
-            <v-autocomplete
+            <v-combobox
               v-model="selectedIngredients"
               :items="ingredients"
               item-text="name"
@@ -92,18 +77,18 @@
               chips
               small-chips
               deletable-chips
-            ></v-autocomplete>
+            ></v-combobox>
           </div>
-          
+
           <div v-if="reportType === 'waste-tracking'">
             <v-checkbox
               v-model="includeCharts"
               label="Include charts and visualizations"
             ></v-checkbox>
           </div>
-          
+
           <div v-if="reportType === 'production-efficiency'">
-            <v-autocomplete
+            <v-combobox
               v-model="selectedRecipes"
               :items="recipes"
               item-text="name"
@@ -113,28 +98,25 @@
               chips
               small-chips
               deletable-chips
-            ></v-autocomplete>
-            
+            ></v-combobox>
+
             <v-checkbox
               v-model="includeCharts"
               label="Include charts and visualizations"
             ></v-checkbox>
           </div>
-          
+
           <!-- Email Options -->
-          <v-checkbox
-            v-model="sendEmail"
-            label="Email report to administrators"
-          ></v-checkbox>
-          
+          <v-checkbox v-model="sendEmail" label="Email report to administrators"></v-checkbox>
+
           <v-text-field
             v-if="sendEmail"
             v-model="emailSubject"
             label="Email Subject"
-            :rules="[v => !!v || 'Email subject is required']"
+            :rules="[(v) => !!v || 'Email subject is required']"
             required
           ></v-text-field>
-          
+
           <!-- Generate Button -->
           <v-btn
             color="primary"
@@ -149,7 +131,7 @@
         </v-form>
       </v-card-text>
     </v-card>
-    
+
     <!-- Report Results -->
     <v-card v-if="reportData.length > 0" class="mt-4">
       <v-card-title class="d-flex justify-space-between">
@@ -158,18 +140,13 @@
           Report Results
         </div>
         <div>
-          <v-btn
-            color="primary"
-            text
-            @click="downloadCSV"
-            :disabled="loading"
-          >
+          <v-btn color="primary" text @click="downloadCSV" :disabled="loading">
             <v-icon left>mdi-download</v-icon>
             Download CSV
           </v-btn>
         </div>
       </v-card-title>
-      
+
       <v-card-text>
         <!-- Inventory Movement Report -->
         <div v-if="reportType === 'inventory-movement'">
@@ -181,28 +158,24 @@
             class="elevation-1"
             :sort-by="[{ key: 'date' }]"
           >
-            <template v-slot:item.date="{ item }">
+            <template v-slot:[`item.date`]="{ item }">
               {{ formatDate(item.date) }}
             </template>
-            
-            <template v-slot:item.type="{ item }">
-              <v-chip
-                :color="getMovementTypeColor(item.type)"
-                text-color="white"
-                small
-              >
+
+            <template v-slot:[`item.type`]="{ item }">
+              <v-chip :color="getMovementTypeColor(item.type || '')" text-color="white" small>
                 {{ item.type }}
               </v-chip>
             </template>
-            
-            <template v-slot:item.quantity="{ item }">
+
+            <template v-slot:[`item.quantity`]="{ item }">
               <span :class="item.type === 'delivery' ? 'success--text' : 'error--text'">
                 {{ item.type === 'delivery' ? '+' : '-' }}{{ item.quantity }} {{ item.unit }}
               </span>
             </template>
           </v-data-table>
         </div>
-        
+
         <!-- Waste Tracking Report -->
         <div v-if="reportType === 'waste-tracking'">
           <v-data-table
@@ -213,25 +186,22 @@
             class="elevation-1"
             :sort-by="[{ key: 'date' }]"
           >
-            <template v-slot:item.date="{ item }">
+            <template v-slot:[`item.date`]="{ item }">
               {{ formatDate(item.date) }}
             </template>
-            
-            <template v-slot:item.quantity="{ item }">
-              <span class="error--text">
-                {{ item.quantity }} {{ item.unit }}
-              </span>
+
+            <template v-slot:[`item.quantity`]="{ item }">
+              <span class="error--text"> {{ item.quantity }} {{ item.unit }} </span>
             </template>
-            
-            <template v-slot:item.cost="{ item }">
-              ${{ item.cost.toFixed(2) }}
+
+            <template v-slot:[`item.cost`]="{ item }">
+              ${{ (item.cost ?? 0).toFixed(2) }}
             </template>
           </v-data-table>
-          
+
           <div v-if="includeCharts" class="mt-4">
             <h3 class="text-h6 mb-2">Waste by Ingredient</h3>
-            <div class="chart-container" style="position: relative; height: 300px;">
-              <!-- Chart will be rendered here -->
+            <div class="chart-container" style="position: relative; height: 300px">
               <p v-if="loading" class="text-center">Loading chart data...</p>
               <p v-else-if="reportData.length === 0" class="text-center">
                 No data available for chart.
@@ -239,7 +209,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Production Efficiency Report -->
         <div v-if="reportType === 'production-efficiency'">
           <v-data-table
@@ -250,24 +220,20 @@
             class="elevation-1"
             :sort-by="[{ key: 'date' }]"
           >
-            <template v-slot:item.date="{ item }">
+            <template v-slot:[`item.date`]="{ item }">
               {{ formatDate(item.date) }}
             </template>
-            
-            <template v-slot:item.efficiency="{ item }">
-              <v-chip
-                :color="getEfficiencyColor(item.efficiency)"
-                text-color="white"
-                small
-              >
-                {{ item.efficiency.toFixed(1) }}%
+
+            <template v-slot:[`item.efficiency`]="{ item }">
+              <v-chip :color="getEfficiencyColor(item.efficiency ?? 0)" text-color="white" small>
+                {{ (item.efficiency ?? 0).toFixed(1) }}%
               </v-chip>
             </template>
           </v-data-table>
-          
+
           <div v-if="includeCharts" class="mt-4">
             <h3 class="text-h6 mb-2">Efficiency Trends</h3>
-            <div class="chart-container" style="position: relative; height: 300px;">
+            <div class="chart-container" style="position: relative; height: 300px">
               <!-- Chart will be rendered here -->
               <p v-if="loading" class="text-center">Loading chart data...</p>
               <p v-else-if="reportData.length === 0" class="text-center">
@@ -278,112 +244,138 @@
         </div>
       </v-card-text>
     </v-card>
-    
+
     <!-- Success/Error Alerts -->
-    <v-snackbar
-      v-model="showSuccessAlert"
-      color="success"
-      :timeout="5000"
-    >
+    <v-snackbar v-model="showSuccessAlert" color="success" :timeout="5000">
       {{ successMessage }}
       <template v-slot:actions>
-        <v-btn
-          text
-          @click="showSuccessAlert = false"
-        >
-          Close
-        </v-btn>
+        <v-btn text @click="showSuccessAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
 
-    <v-snackbar
-      v-model="showErrorAlert"
-      color="error"
-      :timeout="5000"
-    >
+    <v-snackbar v-model="showErrorAlert" color="error" :timeout="5000">
       {{ errorMessage }}
       <template v-slot:actions>
-        <v-btn
-          text
-          @click="showErrorAlert = false"
-        >
-          Close
-        </v-btn>
+        <v-btn text @click="showErrorAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue'
 import { format } from 'date-fns'
+import { DatePicker } from 'v-calendar'
+import 'v-calendar/style.css'
+import { computed, defineComponent, onMounted, ref } from 'vue'
+import { VForm } from 'vuetify/components'
 import { supabase } from '../../services/supabase'
+import { useThemeStore } from '../../stores/theme'
 
 export default defineComponent({
   name: 'ReportsGenerator',
-  
-  setup() {
-    const form = ref<any>(null)
+  emits: ['report-data'],
+  components: {
+    DatePicker,
+  },
+
+  setup(props, { emit }) {
+    const themeStore = useThemeStore()
+    const form = ref<VForm | null>(null)
     const isFormValid = ref(false)
     const loading = ref(false)
     const showSuccessAlert = ref(false)
     const showErrorAlert = ref(false)
     const successMessage = ref('')
     const errorMessage = ref('')
-    
+    const isDarkMode = computed(() => themeStore.isDarkMode)
     // Report options
     const reportType = ref('')
     const reportTypes = [
       { text: 'Inventory Movement', value: 'inventory-movement' },
       { text: 'Waste Tracking', value: 'waste-tracking' },
-      { text: 'Production Efficiency', value: 'production-efficiency' }
+      { text: 'Production Efficiency', value: 'production-efficiency' },
     ]
-    
+
     // Date range
-    const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().substr(0, 10)) // 30 days ago
-    const endDate = ref(new Date().toISOString().substr(0, 10)) // Today
-    const startDateMenu = ref(false)
-    const endDateMenu = ref(false)
-    
+    const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+    const endDate = ref(new Date())
+    const attributesEndDate = ref([
+      {
+        highlight: true,
+        dates: new Date(),
+      },
+    ])
+    const attributes = ref([
+      {
+        highlight: true,
+        dates: new Date(),
+      },
+    ])
     // Filters
-    const ingredients = ref<any[]>([])
+    interface Ingredient {
+      id: string
+      name: string
+      unit: string
+    }
+    const ingredients = ref<Ingredient[]>([])
     const selectedIngredients = ref<string[]>([])
-    const recipes = ref<any[]>([])
+    interface Recipe {
+      id: string
+      name: string
+      expected_yield: number
+    }
+    const recipes = ref<Recipe[]>([])
     const selectedRecipes = ref<string[]>([])
     const includeCharts = ref(true)
-    
+
     // Email options
     const sendEmail = ref(false)
     const emailSubject = ref('')
-    
+
     // Report data
-    const reportData = ref<any[]>([])
-    
+    interface ReportData {
+      date: string
+      ingredient_id?: string
+      ingredient_name?: string
+      type?: string
+      quantity?: number
+      unit?: string
+      reference?: string
+      cost?: number
+      reason?: string
+      recipe_id?: string
+      recipe_name?: string
+      expected_yield?: number
+      actual_yield?: number
+      efficiency?: number
+    }
+    const reportData = ref<ReportData[]>([])
+
     // Table headers
     const inventoryMovementHeaders = [
       { text: 'Date', value: 'date' },
       { text: 'Ingredient', value: 'ingredient_name' },
       { text: 'Type', value: 'type' },
       { text: 'Quantity', value: 'quantity' },
-      { text: 'Batch/Reference', value: 'reference' }
+      { text: 'Batch/Reference', value: 'reference' },
     ]
-    
+
     const wasteTrackingHeaders = [
       { text: 'Date', value: 'date' },
       { text: 'Ingredient', value: 'ingredient_name' },
       { text: 'Quantity', value: 'quantity' },
       { text: 'Cost', value: 'cost' },
-      { text: 'Reason', value: 'reason' }
+      { text: 'Reason', value: 'reason' },
     ]
-    
+
     const productionEfficiencyHeaders = [
       { text: 'Date', value: 'date' },
       { text: 'Recipe', value: 'recipe_name' },
       { text: 'Expected Yield', value: 'expected_yield' },
       { text: 'Actual Yield', value: 'actual_yield' },
-      { text: 'Efficiency', value: 'efficiency' }
+      { text: 'Efficiency', value: 'efficiency' },
     ]
-    
+
     // Fetch ingredients and recipes
     const fetchFilterData = async () => {
       try {
@@ -393,7 +385,7 @@ export default defineComponent({
         const { data: ingredientsData, error: ingredientsError } = await supabase
           .from('ingredients')
           .select('*')
-        
+
         if (ingredientsError) throw ingredientsError
         ingredients.value = ingredientsData || []
         ingredients.value.sort((a, b) => a.name.localeCompare(b.name))
@@ -402,11 +394,11 @@ export default defineComponent({
         const { data: recipesData, error: recipesError } = await supabase
           .from('recipes')
           .select('*')
-        
+
         if (recipesError) throw recipesError
         recipes.value = recipesData || []
         recipes.value.sort((a, b) => a.name.localeCompare(b.name))
-        
+
         loading.value = false
       } catch (error) {
         console.error('Error fetching filter data:', error)
@@ -414,12 +406,12 @@ export default defineComponent({
         loading.value = false
       }
     }
-    
+
     // Format date for display
     const formatDate = (dateString: string) => {
       return format(new Date(dateString), 'MMM d, yyyy')
     }
-    
+
     // Get color for movement type
     const getMovementTypeColor = (type: string) => {
       switch (type) {
@@ -433,7 +425,7 @@ export default defineComponent({
           return 'grey'
       }
     }
-    
+
     // Get color for efficiency
     const getEfficiencyColor = (efficiency: number) => {
       if (efficiency >= 100) return 'success'
@@ -441,33 +433,33 @@ export default defineComponent({
       if (efficiency >= 75) return 'warning'
       return 'error'
     }
-    
+
     // Reset results
     const resetResults = () => {
       reportData.value = []
     }
-    
+
     // Show error message
     const showError = (message: string) => {
       errorMessage.value = message
       showErrorAlert.value = true
     }
-    
+
     // Generate report using Supabase
     const generateReport = async () => {
       if (!isFormValid.value) {
         form.value?.validate()
         return
       }
-      
+
       loading.value = true
       reportData.value = []
-      
+
       try {
         const startDateTime = new Date(startDate.value)
         const endDateTime = new Date(endDate.value)
         endDateTime.setHours(23, 59, 59, 999) // End of day
-        
+
         if (reportType.value === 'inventory-movement') {
           await generateInventoryMovementReport(startDateTime, endDateTime)
         } else if (reportType.value === 'waste-tracking') {
@@ -475,88 +467,91 @@ export default defineComponent({
         } else if (reportType.value === 'production-efficiency') {
           await generateProductionEfficiencyReport(startDateTime, endDateTime)
         }
-        
+
         if (sendEmail.value) {
           await sendReportEmail()
         }
-        
+
         successMessage.value = 'Report generated successfully!'
         showSuccessAlert.value = true
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error generating report:', error)
-        showError(error.message || 'Failed to generate report')
+        showError((error as Error).message || 'Failed to generate report')
       } finally {
         loading.value = false
       }
     }
-    
+
     // Generate inventory movement report
     const generateInventoryMovementReport = async (startDateTime: Date, endDateTime: Date) => {
       try {
         // Get all required data from Supabase
         const startDateStr = startDateTime.toISOString()
         const endDateStr = endDateTime.toISOString()
-        
+
         // Fetch ingredients
         const { data: ingredientsData, error: ingredientsError } = await supabase
           .from('ingredients')
           .select('*')
-        
+
         if (ingredientsError) throw ingredientsError
         const ingredients = ingredientsData || []
-        
+
         // Fetch deliveries in date range
         const { data: deliveriesData, error: deliveriesError } = await supabase
           .from('deliveries')
           .select('*, delivery_items(*)')
           .gte('delivery_date', startDateStr)
           .lte('delivery_date', endDateStr)
-        
+
         if (deliveriesError) throw deliveriesError
         const deliveries = deliveriesData || []
-        
+
         // Fetch removals in date range
         const { data: removalsData, error: removalsError } = await supabase
           .from('removals')
           .select('*, removal_items(*)')
           .gte('removal_date', startDateStr)
           .lte('removal_date', endDateStr)
-        
+
         if (removalsError) throw removalsError
         const removals = removalsData || []
-        
+
         // Fetch bakes in date range
         const { data: bakesData, error: bakesError } = await supabase
           .from('bakes')
           .select('*, recipes(*)')
           .gte('bake_date', startDateStr)
           .lte('bake_date', endDateStr)
-        
+
         if (bakesError) throw bakesError
         const bakes = bakesData || []
-        
+
         // Fetch recipe ingredients for all recipes used in bakes
-        const recipeIds = bakes.map(bake => bake.recipe_id)
+        const recipeIds = bakes.map((bake) => bake.recipe_id)
         const { data: recipeIngredientsData, error: recipeIngredientsError } = await supabase
           .from('recipe_ingredients')
           .select('*')
           .in('recipe_id', recipeIds)
-        
+
         if (recipeIngredientsError) throw recipeIngredientsError
         const recipeIngredients = recipeIngredientsData || []
-        
+
         // Process delivery data
         const deliveryData = []
         for (const delivery of deliveries) {
           for (const item of delivery.delivery_items) {
-            const ingredient = ingredients.find(i => i.id === item.ingredient_id)
+            const ingredient = ingredients.find((i) => i.id === item.ingredient_id)
             if (!ingredient) continue
-            
+
             // Apply ingredient filter if selected
-            if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(item.ingredient_id)) {
+            if (
+              selectedIngredients.value.length > 0 &&
+              !selectedIngredients.value.includes(item.ingredient_id)
+            ) {
               continue
             }
-            
+
             deliveryData.push({
               date: delivery.delivery_date,
               ingredient_id: ingredient.id,
@@ -565,23 +560,26 @@ export default defineComponent({
               quantity: item.quantity,
               unit: ingredient.unit,
               reference: `Batch: ${item.batch_number}`,
-              supplier: delivery.supplier
+              supplier: delivery.supplier,
             })
           }
         }
-        
+
         // Process removal data
         const removalData = []
         for (const removal of removals) {
           for (const item of removal.removal_items) {
-            const ingredient = ingredients.find(i => i.id === item.ingredient_id)
+            const ingredient = ingredients.find((i) => i.id === item.ingredient_id)
             if (!ingredient) continue
-            
+
             // Apply ingredient filter if selected
-            if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(item.ingredient_id)) {
+            if (
+              selectedIngredients.value.length > 0 &&
+              !selectedIngredients.value.includes(item.ingredient_id)
+            ) {
               continue
             }
-            
+
             removalData.push({
               date: removal.removal_date,
               ingredient_id: ingredient.id,
@@ -590,28 +588,31 @@ export default defineComponent({
               quantity: item.quantity,
               unit: ingredient.unit,
               reference: `Reason: ${removal.reason}`,
-              reason: removal.reason
+              reason: removal.reason,
             })
           }
         }
-        
+
         // Process bake data
         const bakeData = []
         for (const bake of bakes) {
           const recipe = bake.recipes
           if (!recipe) continue
-          
-          const recipeIngs = recipeIngredients.filter(ri => ri.recipe_id === recipe.id)
-          
+
+          const recipeIngs = recipeIngredients.filter((ri) => ri.recipe_id === recipe.id)
+
           for (const ri of recipeIngs) {
-            const ingredient = ingredients.find(i => i.id === ri.ingredient_id)
+            const ingredient = ingredients.find((i) => i.id === ri.ingredient_id)
             if (!ingredient) continue
-            
+
             // Apply ingredient filter if selected
-            if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(ingredient.id)) {
+            if (
+              selectedIngredients.value.length > 0 &&
+              !selectedIngredients.value.includes(ingredient.id)
+            ) {
               continue
             }
-            
+
             bakeData.push({
               date: bake.bake_date,
               ingredient_id: ingredient.id,
@@ -620,34 +621,36 @@ export default defineComponent({
               quantity: ri.quantity,
               unit: ingredient.unit,
               reference: `Recipe: ${recipe.name}`,
-              recipe: recipe.name
+              recipe: recipe.name,
             })
           }
         }
-        
+
         // Combine all data and sort by date
-        reportData.value = [...deliveryData, ...removalData, ...bakeData]
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        reportData.value = [...deliveryData, ...removalData, ...bakeData].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        )
+        emit('report-data', reportData.value)
       } catch (error) {
         console.error('Error generating inventory movement report:', error)
         throw new Error('Failed to generate inventory movement report')
       }
     }
-    
+
     // Generate waste tracking report
     const generateWasteTrackingReport = async (startDateTime: Date, endDateTime: Date) => {
       try {
         const startDateStr = startDateTime.toISOString()
         const endDateStr = endDateTime.toISOString()
-        
+
         // Fetch ingredients
         const { data: ingredientsData, error: ingredientsError } = await supabase
           .from('ingredients')
           .select('*')
-        
+
         if (ingredientsError) throw ingredientsError
         const ingredients = ingredientsData || []
-        
+
         // Fetch waste removals in date range
         const { data: removalsData, error: removalsError } = await supabase
           .from('removals')
@@ -655,22 +658,25 @@ export default defineComponent({
           .eq('reason', 'waste')
           .gte('removal_date', startDateStr)
           .lte('removal_date', endDateStr)
-        
+
         if (removalsError) throw removalsError
         const removals = removalsData || []
-        
+
         // Process removal data
         const wasteData = []
         for (const removal of removals) {
           for (const item of removal.removal_items) {
-            const ingredient = ingredients.find(i => i.id === item.ingredient_id)
+            const ingredient = ingredients.find((i) => i.id === item.ingredient_id)
             if (!ingredient) continue
-            
+
             // Apply ingredient filter if selected
-            if (selectedIngredients.value.length > 0 && !selectedIngredients.value.includes(item.ingredient_id)) {
+            if (
+              selectedIngredients.value.length > 0 &&
+              !selectedIngredients.value.includes(item.ingredient_id)
+            ) {
               continue
             }
-            
+
             wasteData.push({
               date: removal.removal_date,
               ingredient_id: ingredient.id,
@@ -679,64 +685,68 @@ export default defineComponent({
               unit: ingredient.unit,
               // Dummy cost calculation - in a real app this would use actual costs
               cost: item.quantity * 2.5,
-              reason: 'Waste'
+              reason: 'Waste',
             })
           }
         }
-        
+
         // Sort by date
-        reportData.value = wasteData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        reportData.value = wasteData.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        )
       } catch (error) {
         console.error('Error generating waste tracking report:', error)
         throw new Error('Failed to generate waste tracking report')
       }
     }
-    
+
     // Generate production efficiency report
     const generateProductionEfficiencyReport = async (startDateTime: Date, endDateTime: Date) => {
       try {
         const startDateStr = startDateTime.toISOString()
         const endDateStr = endDateTime.toISOString()
-        
+
         // Fetch bakes in date range with their recipes
         const { data: bakesData, error: bakesError } = await supabase
           .from('bakes')
           .select('*, recipes(*)')
           .gte('bake_date', startDateStr)
           .lte('bake_date', endDateStr)
-        
+
         if (bakesError) throw bakesError
         const bakes = bakesData || []
-        
+
         // Process bake data
         const efficiencyData = []
         for (const bake of bakes) {
           const recipe = bake.recipes
           if (!recipe) continue
-          
+
           // Apply recipe filter if selected
           if (selectedRecipes.value.length > 0 && !selectedRecipes.value.includes(recipe.id)) {
             continue
           }
-          
+
           efficiencyData.push({
             date: bake.bake_date,
             recipe_id: recipe.id,
             recipe_name: recipe.name,
             expected_yield: recipe.expected_yield,
             actual_yield: bake.actual_yield,
-            efficiency: (bake.actual_yield / recipe.expected_yield) * 100
+            efficiency: (bake.actual_yield / recipe.expected_yield) * 100,
           })
         }
-        
+
         // Sort by date
-        reportData.value = efficiencyData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        reportData.value = efficiencyData.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        )
       } catch (error) {
         console.error('Error generating production efficiency report:', error)
         throw new Error('Failed to generate production efficiency report')
       }
     }
-    
+
     // Send report email
     const sendReportEmail = async () => {
       try {
@@ -746,47 +756,52 @@ export default defineComponent({
           subject: emailSubject.value,
           reportType: reportType.value,
           dateRange: `${startDate.value} to ${endDate.value}`,
-          dataCount: reportData.value.length
+          dataCount: reportData.value.length,
         })
-        
+
         // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
         return true
       } catch (error) {
         console.error('Error sending report email:', error)
         throw new Error('Failed to send report email')
       }
     }
-    
+
     // Convert array to CSV
-    const arrayToCSV = (data: any[], fields: string[]): string => {
+    const arrayToCSV = (data: Record<string, unknown>[], fields: string[]): string => {
       if (data.length === 0) return ''
-      
+
       // Create header row
       const header = fields.join(',')
-      
+
       // Create data rows
-      const rows = data.map(item => {
-        return fields.map(field => {
-          const value = item[field]
-          // Handle special cases (strings with commas, quotes, etc.)
-          if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-            return `"${value.replace(/"/g, '""')}"`
-          }
-          return value
-        }).join(',')
+      const rows = data.map((item) => {
+        return fields
+          .map((field) => {
+            const value = item[field]
+            // Handle special cases (strings with commas, quotes, etc.)
+            if (
+              typeof value === 'string' &&
+              (value.includes(',') || value.includes('"') || value.includes('\n'))
+            ) {
+              return `"${value.replace(/"/g, '""')}"`
+            }
+            return value
+          })
+          .join(',')
       })
-      
+
       // Combine header and rows
       return [header, ...rows].join('\n')
     }
-    
+
     // Download CSV
     const downloadCSV = () => {
       try {
         let fields: string[] = []
-        
+
         // Set fields based on report type
         if (reportType.value === 'inventory-movement') {
           fields = ['date', 'ingredient_name', 'type', 'quantity', 'unit', 'reference']
@@ -795,17 +810,20 @@ export default defineComponent({
         } else if (reportType.value === 'production-efficiency') {
           fields = ['date', 'recipe_name', 'expected_yield', 'actual_yield', 'efficiency']
         }
-        
+
         // Create CSV
         const csv = arrayToCSV(reportData.value, fields)
-        
+
         // Create download link
         const blob = new Blob([csv], { type: 'text/csv' })
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.setAttribute('hidden', '')
         a.setAttribute('href', url)
-        a.setAttribute('download', `${reportType.value}-report-${startDate.value}-to-${endDate.value}.csv`)
+        a.setAttribute(
+          'download',
+          `${reportType.value}-report-${startDate.value}-to-${endDate.value}.csv`,
+        )
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -814,11 +832,11 @@ export default defineComponent({
         showError('Failed to download CSV')
       }
     }
-    
+
     onMounted(() => {
       fetchFilterData()
     })
-    
+
     return {
       form,
       isFormValid,
@@ -831,8 +849,7 @@ export default defineComponent({
       reportTypes,
       startDate,
       endDate,
-      startDateMenu,
-      endDateMenu,
+      isDarkMode,
       ingredients,
       selectedIngredients,
       recipes,
@@ -849,8 +866,20 @@ export default defineComponent({
       getEfficiencyColor,
       resetResults,
       generateReport,
-      downloadCSV
+      downloadCSV,
+      attributesEndDate,
+      attributes,
     }
-  }
+  },
 })
 </script>
+
+<style>
+:deep(.vc-popover-content) {
+  position: fixed !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: 9999 !important;
+}
+</style>

@@ -36,20 +36,10 @@
                 @click:append-inner="showConfirmPassword = !showConfirmPassword"
                 required
               ></v-text-field>
-              <v-alert
-                v-if="authStore.error"
-                type="error"
-                class="mt-3"
-                dismissible
-              >
+              <v-alert v-if="authStore.error" type="error" class="mt-3" dismissible>
                 {{ authStore.error }}
               </v-alert>
-              <v-alert
-                v-if="successMessage"
-                type="success"
-                class="mt-3"
-                dismissible
-              >
+              <v-alert v-if="successMessage" type="success" class="mt-3" dismissible>
                 {{ successMessage }}
               </v-alert>
             </v-form>
@@ -77,18 +67,19 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { VForm } from 'vuetify/components'
 import { useAuthStore } from '../stores/auth'
 
 export default defineComponent({
   name: 'SignupView',
-  
+
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
-    
-    const form = ref<any>(null)
+
+    const form = ref<null | InstanceType<typeof VForm>>(null)
     const isFormValid = ref(false)
     const email = ref('')
     const password = ref('')
@@ -96,46 +87,47 @@ export default defineComponent({
     const showPassword = ref(false)
     const showConfirmPassword = ref(false)
     const successMessage = ref('')
-    
+
     const emailRules = [
       (v: string) => !!v || 'Email is required',
-      (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid'
+      (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid',
     ]
-    
+
     const passwordRules = [
       (v: string) => !!v || 'Password is required',
-      (v: string) => v.length >= 6 || 'Password must be at least 6 characters'
+      (v: string) => v.length >= 6 || 'Password must be at least 6 characters',
     ]
-    
+
     const confirmPasswordRules = [
       (v: string) => !!v || 'Please confirm your password',
-      (v: string) => v === password.value || 'Passwords do not match'
+      (v: string) => v === password.value || 'Passwords do not match',
     ]
-    
+
     const signup = async () => {
       if (!isFormValid.value) {
         form.value?.validate()
         return
       }
-      
+
       const result = await authStore.signUp(email.value, password.value)
-      
+
       if (result.success) {
-        successMessage.value = 'Account created successfully! Please check your email for verification.'
-        
+        successMessage.value =
+          'Account created successfully! Please check your email for verification.'
+
         // Reset form
         email.value = ''
         password.value = ''
         confirmPassword.value = ''
         form.value?.reset()
-        
+
         // Redirect to login after a delay
         setTimeout(() => {
           router.push('/login')
         }, 3000)
       }
     }
-    
+
     return {
       authStore,
       form,
@@ -149,8 +141,8 @@ export default defineComponent({
       emailRules,
       passwordRules,
       confirmPasswordRules,
-      signup
+      signup,
     }
-  }
+  },
 })
 </script>

@@ -10,7 +10,7 @@ import * as directives from 'vuetify/directives'
 const darkTheme: ThemeDefinition = {
   dark: true,
   colors: {
-    primary: '#2196F3',
+    primary: '#F5C87F',
     // primary-two: '#00A86B',
     // primary-three: '#2196F3',
     secondary: '#4ECDC4',

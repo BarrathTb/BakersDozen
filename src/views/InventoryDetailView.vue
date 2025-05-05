@@ -1,24 +1,18 @@
 <template>
   <div>
-    <v-btn
-      text
-      to="/inventory"
-      class="mb-4"
-    >
+    <v-btn text to="/inventory" class="mb-4">
       <v-icon left>mdi-arrow-left</v-icon>
       Back to Inventory
     </v-btn>
-    
-    <div v-if="loading" class="d-flex justify-center align-center" style="height: 400px;">
+
+    <div v-if="loading" class="d-flex justify-center align-center" style="height: 400px">
       <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
     </div>
-    
+
     <div v-else-if="!ingredient">
-      <v-alert type="error">
-        Ingredient not found
-      </v-alert>
+      <v-alert type="error"> Ingredient not found </v-alert>
     </div>
-    
+
     <div v-else>
       <v-row>
         <v-col cols="12" md="8">
@@ -34,14 +28,14 @@
           </v-chip>
         </v-col>
       </v-row>
-      
+
       <!-- Ingredient Details -->
       <v-card class="mb-4">
         <v-card-title>
           <v-icon left>mdi-information</v-icon>
           Ingredient Details
         </v-card-title>
-        
+
         <v-card-text>
           <v-row>
             <v-col cols="12" md="6">
@@ -52,22 +46,26 @@
                   </v-list-item-icon>
                   <v-list-item-content>
                     <v-list-item-title>Current Quantity</v-list-item-title>
-                    <v-list-item-subtitle>{{ ingredient.current_quantity }} {{ ingredient.unit }}</v-list-item-subtitle>
+                    <v-list-item-subtitle
+                      >{{ ingredient.current_quantity }} {{ ingredient.unit }}</v-list-item-subtitle
+                    >
                   </v-list-item-content>
                 </v-list-item>
-                
+
                 <v-list-item>
                   <v-list-item-icon>
                     <v-icon>mdi-alert-circle</v-icon>
                   </v-list-item-icon>
                   <v-list-item-content>
                     <v-list-item-title>Minimum Quantity</v-list-item-title>
-                    <v-list-item-subtitle>{{ ingredient.min_quantity }} {{ ingredient.unit }}</v-list-item-subtitle>
+                    <v-list-item-subtitle
+                      >{{ ingredient.min_quantity }} {{ ingredient.unit }}</v-list-item-subtitle
+                    >
                   </v-list-item-content>
                 </v-list-item>
               </v-list>
             </v-col>
-            
+
             <v-col cols="12" md="6">
               <v-list>
                 <v-list-item>
@@ -76,10 +74,12 @@
                   </v-list-item-icon>
                   <v-list-item-content>
                     <v-list-item-title>Last Updated</v-list-item-title>
-                    <v-list-item-subtitle>{{ formatDate(ingredient.last_updated) }}</v-list-item-subtitle>
+                    <v-list-item-subtitle>{{
+                      formatDate(ingredient.last_updated)
+                    }}</v-list-item-subtitle>
                   </v-list-item-content>
                 </v-list-item>
-                
+
                 <v-list-item>
                   <v-list-item-icon>
                     <v-icon>mdi-identifier</v-icon>
@@ -92,9 +92,9 @@
               </v-list>
             </v-col>
           </v-row>
-          
+
           <v-divider class="my-4"></v-divider>
-          
+
           <v-row>
             <v-col cols="12">
               <h3 class="text-h6 mb-2">Stock Level</h3>
@@ -108,7 +108,7 @@
                   <strong>{{ stockPercentage.toFixed(1) }}%</strong>
                 </template>
               </v-progress-linear>
-              
+
               <div class="mt-2 text-body-1" v-if="isLowStock">
                 <v-icon color="warning" left>mdi-alert</v-icon>
                 Low stock level. Consider ordering more.
@@ -120,26 +120,23 @@
             </v-col>
           </v-row>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="primary"
-            to="/deliveries/new"
-          >
+          <v-btn color="primary" to="/deliveries/new">
             <v-icon left>mdi-truck-delivery</v-icon>
             Add to Delivery
           </v-btn>
         </v-card-actions>
       </v-card>
-      
+
       <!-- Inventory Movement History -->
       <v-card class="mb-4">
         <v-card-title>
           <v-icon left>mdi-history</v-icon>
           Inventory Movement History
         </v-card-title>
-        
+
         <v-card-text>
           <v-data-table
             :headers="movementHeaders"
@@ -149,21 +146,17 @@
             class="elevation-1"
             :sort-by="[{ key: 'date', order: 'desc' }]"
           >
-            <template v-slot:item.date="{ item }">
+            <template v-slot:[`item.date`]="{ item }">
               {{ formatDate(item.date) }}
             </template>
-            
-            <template v-slot:item.type="{ item }">
-              <v-chip
-                :color="getMovementTypeColor(item.type)"
-                text-color="white"
-                small
-              >
+
+            <template v-slot:[`item.type`]="{ item }">
+              <v-chip :color="getMovementTypeColor(item.type)" text-color="white" small>
                 {{ item.type }}
               </v-chip>
             </template>
-            
-            <template v-slot:item.quantity="{ item }">
+
+            <template v-slot:[`item.quantity`]="{ item }">
               <span :class="item.type === 'delivery' ? 'success--text' : 'error--text'">
                 {{ item.type === 'delivery' ? '+' : '-' }}{{ item.quantity }} {{ ingredient.unit }}
               </span>
@@ -171,14 +164,14 @@
           </v-data-table>
         </v-card-text>
       </v-card>
-      
+
       <!-- Recipes Using This Ingredient -->
       <v-card>
         <v-card-title>
           <v-icon left>mdi-book-open-variant</v-icon>
           Recipes Using This Ingredient
         </v-card-title>
-        
+
         <v-card-text>
           <v-data-table
             :headers="recipeHeaders"
@@ -188,18 +181,12 @@
             class="elevation-1"
             :sort-by="[{ key: 'name' }]"
           >
-            <template v-slot:item.quantity="{ item }">
+            <template v-slot:[`item.quantity`]="{ item }">
               {{ item.quantity }} {{ ingredient.unit }}
             </template>
-            
-            <template v-slot:item.actions="{ item }">
-              <v-btn
-                icon
-                small
-                color="primary"
-                :to="`/recipes/${item.id}`"
-                title="View Recipe"
-              >
+
+            <template v-slot:[`item.actions`]="{ item }">
+              <v-btn icon small color="primary" :to="`/recipes/${item.id}`" title="View Recipe">
                 <v-icon>mdi-eye</v-icon>
               </v-btn>
             </template>
@@ -211,9 +198,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
+import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { db } from '../services/database'
 
 interface Ingredient {
@@ -231,6 +218,7 @@ interface Recipe {
   expected_yield: number
   created_by: string
   created_at: string
+  quantity: number // Added quantity property
 }
 
 interface RecipeIngredient {
@@ -284,34 +272,41 @@ interface Bake {
 
 export default defineComponent({
   name: 'InventoryDetailView',
-  
+
   setup() {
     const route = useRoute()
     const ingredientId = route.params.id as string
-    
+
     const loading = ref(true)
     const ingredient = ref<Ingredient | null>(null)
-    
+
     const loadingMovements = ref(true)
-    const movements = ref<any[]>([])
-    
+    interface Movement {
+      id: string
+      date: string
+      type: string
+      quantity: number
+      reference: string
+    }
+    const movements = ref<Movement[]>([])
+
     const loadingRecipes = ref(true)
-    const recipes = ref<any[]>([])
-    
+    const recipes = ref<Recipe[]>([])
+
     const movementHeaders = [
       { text: 'Date', value: 'date' },
       { text: 'Type', value: 'type' },
       { text: 'Quantity', value: 'quantity' },
-      { text: 'Reference', value: 'reference' }
+      { text: 'Reference', value: 'reference' },
     ]
-    
+
     const recipeHeaders = [
       { text: 'Recipe Name', value: 'name' },
       { text: 'Quantity Used', value: 'quantity' },
       { text: 'Expected Yield', value: 'expected_yield' },
-      { text: 'Actions', value: 'actions', sortable: false }
+      { text: 'Actions', value: 'actions', sortable: false },
     ]
-    
+
     // Calculate if the ingredient is low on stock
     const isLowStock = computed(() => {
       if (!ingredient.value) return false
@@ -320,36 +315,36 @@ export default defineComponent({
         ingredient.value.current_quantity <= ingredient.value.min_quantity
       )
     })
-    
+
     // Calculate if the ingredient is out of stock
     const isOutOfStock = computed(() => {
       if (!ingredient.value) return false
       return ingredient.value.current_quantity <= 0
     })
-    
+
     // Calculate stock percentage for progress bar
     const stockPercentage = computed(() => {
       if (!ingredient.value || ingredient.value.min_quantity === 0) return 0
-      
+
       // Calculate percentage relative to minimum quantity (200% means twice the minimum)
       const percentage = (ingredient.value.current_quantity / ingredient.value.min_quantity) * 100
-      
+
       // Cap at 100% for the progress bar
       return Math.min(percentage, 100)
     })
-    
+
     // Format date for display
     const formatDate = (dateString: string) => {
       return format(new Date(dateString), 'MMM d, yyyy h:mm a')
     }
-    
+
     // Get color based on quantity level
     const getQuantityColor = (current: number, min: number) => {
       if (current <= 0) return 'error'
       if (current <= min) return 'warning'
       return 'success'
     }
-    
+
     // Get color for movement type
     const getMovementTypeColor = (type: string) => {
       switch (type) {
@@ -363,14 +358,14 @@ export default defineComponent({
           return 'grey'
       }
     }
-    
+
     // Fetch ingredient details
     const fetchIngredient = async () => {
       loading.value = true
-      
+
       try {
         const ingredientData = await db.getById<'ingredients'>('ingredients', ingredientId)
-        
+
         if (ingredientData) {
           ingredient.value = ingredientData
         }
@@ -380,118 +375,127 @@ export default defineComponent({
         loading.value = false
       }
     }
-    
+
     // Fetch ingredient movements
     const fetchMovements = async () => {
       loadingMovements.value = true
-      
+
       try {
         // Fetch deliveries
-        const deliveryItems = await db.query<'delivery_items'>('delivery_items', 
-          item => item.ingredient_id === ingredientId
+        const deliveryItems = await db.query<'delivery_items'>(
+          'delivery_items',
+          (item) => item.ingredient_id === ingredientId,
         )
-        
+
         const deliveries = await db.getAll<'deliveries'>('deliveries')
-        
+
         // Fetch removals
-        const removalItems = await db.query<'removal_items'>('removal_items', 
-          item => item.ingredient_id === ingredientId
+        const removalItems = await db.query<'removal_items'>(
+          'removal_items',
+          (item) => item.ingredient_id === ingredientId,
         )
-        
+
         const removals = await db.getAll<'removals'>('removals')
-        
+
         // Fetch bakes
-        const recipeIngredients = await db.query<'recipe_ingredients'>('recipe_ingredients', 
-          item => item.ingredient_id === ingredientId
+        const recipeIngredients = await db.query<'recipe_ingredients'>(
+          'recipe_ingredients',
+          (item) => item.ingredient_id === ingredientId,
         )
-        
+
         const recipes = await db.getAll<'recipes'>('recipes')
         const bakes = await db.getAll<'bakes'>('bakes')
-        
+
         // Transform deliveries
-        const deliveryMovements = deliveryItems.map(item => {
-          const delivery = deliveries.find(d => d.id === item.delivery_id)
+        const deliveryMovements = deliveryItems.map((item) => {
+          const delivery = deliveries.find((d) => d.id === item.delivery_id)
           return {
             id: `delivery-${item.id}`,
             date: delivery?.delivery_date || new Date().toISOString(),
             type: 'delivery',
             quantity: item.quantity,
-            reference: `Supplier: ${delivery?.supplier || 'Unknown'}, Batch: ${item.batch_number}`
+            reference: `Supplier: ${delivery?.supplier || 'Unknown'}, Batch: ${item.batch_number}`,
           }
         })
-        
+
         // Transform removals
-        const removalMovements = removalItems.map(item => {
-          const removal = removals.find(r => r.id === item.removal_id)
+        const removalMovements = removalItems.map((item) => {
+          const removal = removals.find((r) => r.id === item.removal_id)
           return {
             id: `removal-${item.id}`,
             date: removal?.removal_date || new Date().toISOString(),
             type: 'removal',
             quantity: item.quantity,
-            reference: `Reason: ${removal?.reason || 'Unknown'}`
+            reference: `Reason: ${removal?.reason || 'Unknown'}`,
           }
         })
-        
+
         // Transform bakes
-        const bakeMovements: any[] = []
-        
-        recipeIngredients.forEach(item => {
-          const recipe = recipes.find(r => r.id === item.recipe_id)
-          
+        const bakeMovements: Movement[] = []
+
+        recipeIngredients.forEach((item) => {
+          const recipe = recipes.find((r) => r.id === item.recipe_id)
+
           if (recipe) {
-            const recipeBakes = bakes.filter(b => b.recipe_id === recipe.id)
-            
-            recipeBakes.forEach(bake => {
+            const recipeBakes = bakes.filter((b) => b.recipe_id === recipe.id)
+
+            recipeBakes.forEach((bake) => {
               bakeMovements.push({
                 id: `bake-${bake.id}`,
                 date: bake.bake_date,
                 type: 'bake',
                 quantity: item.quantity,
-                reference: `Recipe: ${recipe.name}`
+                reference: `Recipe: ${recipe.name}`,
               })
             })
           }
         })
-        
+
         // Combine all data and sort by date
-        movements.value = [...deliveryMovements, ...removalMovements, ...bakeMovements]
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        movements.value = [...deliveryMovements, ...removalMovements, ...bakeMovements].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        )
       } catch (error) {
         console.error('Error fetching movements:', error)
       } finally {
         loadingMovements.value = false
       }
     }
-    
+
     // Fetch recipes using this ingredient
     const fetchRecipes = async () => {
       loadingRecipes.value = true
-      
+
       try {
-        const recipeIngredients = await db.query<'recipe_ingredients'>('recipe_ingredients', 
-          item => item.ingredient_id === ingredientId
+        const recipeIngredients = await db.query<'recipe_ingredients'>(
+          'recipe_ingredients',
+          (item) => item.ingredient_id === ingredientId,
         )
-        
+
         const recipesData = await db.getAll<'recipes'>('recipes')
-        
+
         // Transform data
-        recipes.value = recipeIngredients.map(item => {
-          const recipe = recipesData.find(r => r.id === item.recipe_id)
-          
+        recipes.value = recipeIngredients.map((item) => {
+          const recipe = recipesData.find((r) => r.id === item.recipe_id)
+
           if (!recipe) {
             return {
               id: item.recipe_id,
               name: 'Unknown Recipe',
               quantity: item.quantity,
-              expected_yield: 0
+              expected_yield: 0,
+              created_by: 'Unknown',
+              created_at: new Date().toISOString(),
             }
           }
-          
+
           return {
             id: recipe.id,
             name: recipe.name,
             quantity: item.quantity,
-            expected_yield: recipe.expected_yield
+            expected_yield: recipe.expected_yield,
+            created_by: recipe.created_by,
+            created_at: recipe.created_at,
           }
         })
       } catch (error) {
@@ -500,13 +504,17 @@ export default defineComponent({
         loadingRecipes.value = false
       }
     }
-    
+
     // Set up subscription for real-time updates
     let unsubscribe: (() => void) | null = null
-    
+
     const setupSubscription = () => {
       unsubscribe = db.subscribe((table, action, item) => {
-        if (table === 'ingredients' && action === 'update' && (item as Ingredient).id === ingredientId) {
+        if (
+          table === 'ingredients' &&
+          action === 'update' &&
+          (item as Ingredient).id === ingredientId
+        ) {
           fetchIngredient()
         } else if (['delivery_items', 'removal_items', 'bakes'].includes(table)) {
           fetchMovements()
@@ -515,20 +523,20 @@ export default defineComponent({
         }
       })
     }
-    
+
     onMounted(() => {
       fetchIngredient()
       fetchMovements()
       fetchRecipes()
       setupSubscription()
     })
-    
+
     onUnmounted(() => {
       if (unsubscribe) {
         unsubscribe()
       }
     })
-    
+
     return {
       loading,
       ingredient,
@@ -543,8 +551,8 @@ export default defineComponent({
       stockPercentage,
       formatDate,
       getQuantityColor,
-      getMovementTypeColor
+      getMovementTypeColor,
     }
-  }
+  },
 })
 </script>

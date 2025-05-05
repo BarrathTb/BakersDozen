@@ -6,7 +6,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file.')
+  console.error(
+    'Missing Supabase environment variables. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file.',
+  )
 }
 
 // Create Supabase client
@@ -15,10 +17,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: localStorage
-  }
+    storage: localStorage,
+  },
 })
-
 
 // Connection status monitoring
 let isOffline = false
@@ -27,10 +28,10 @@ let isOffline = false
 export const checkConnection = async (): Promise<boolean> => {
   try {
     // Simple query to check if we can connect to Supabase
-    const { data, error } = await supabase.from('users').select('id').limit(1)
-    
+    const { error } = await supabase.from('users').select('id').limit(1)
+
     if (error) throw error
-    
+
     isOffline = false
     return true
   } catch (error) {
@@ -49,15 +50,15 @@ export const getConnectionStatus = (): boolean => {
 export const initConnectionMonitoring = () => {
   // Check connection initially
   checkConnection()
-  
+
   // Set up periodic connection checks
   setInterval(checkConnection, 30000) // Check every 30 seconds
-  
+
   // Listen for online/offline events
   window.addEventListener('online', () => {
     checkConnection()
   })
-  
+
   window.addEventListener('offline', () => {
     isOffline = true
   })
