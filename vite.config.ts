@@ -1,10 +1,10 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import vueDevTools from 'vite-plugin-vue-devtools'
+import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -57,8 +57,8 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Bakers Dozen',
-        short_name: 'BakersDoz',
+        name: 'Dough Tracker',
+        short_name: 'DoughDoz',
         description: 'Inventory Management System for Bakeries',
         theme_color: '#FF6B6B',
         background_color: '#121212',

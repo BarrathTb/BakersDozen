@@ -131,17 +131,17 @@
 
     <!-- Footer -->
     <!-- <v-footer color="primary" :app="true">
-  <span>&copy; {{ new Date().getFullYear() }} Bakers Dozen</span>
+  <span>&copy; {{ new Date().getFullYear() }} Dough Tracker</span>
 </v-footer> -->
   </v-app>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from 'vue'
+import { computed, defineComponent, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import appLogo from '../assets/images/logos/dough-tracker-logo.png'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
-import appLogo from '../assets/images/logos/dough-tracker-logo.png'
 
 export default defineComponent({
   name: 'MainLayout',

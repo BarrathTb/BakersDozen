@@ -1,12 +1,12 @@
 /**
  * Cache Recovery Utilities
- * 
+ *
  * This module provides utilities for managing and recovering from cache-related issues
  * that might cause blank pages after browser refreshes.
  */
 
 // Constants
-const CACHE_PREFIX = 'bakersDozen_'
+const CACHE_PREFIX = 'DoughDozen_'
 const AUTH_CACHE_KEYS = ['supabase.auth.token', 'supabase.auth.refreshToken']
 
 /**
@@ -15,22 +15,21 @@ const AUTH_CACHE_KEYS = ['supabase.auth.token', 'supabase.auth.refreshToken']
  */
 export const clearAllCacheData = (): void => {
   console.log('Clearing all application cache data...')
-  
+
   // Get all localStorage keys
   const keys = Object.keys(localStorage)
-  
+
   // Filter keys related to our application
-  const appKeys = keys.filter(key => 
-    key.startsWith(CACHE_PREFIX) || 
-    key.startsWith('supabase.auth')
+  const appKeys = keys.filter(
+    (key) => key.startsWith(CACHE_PREFIX) || key.startsWith('supabase.auth'),
   )
-  
+
   // Remove all application-related keys
-  appKeys.forEach(key => {
+  appKeys.forEach((key) => {
     console.log(`Removing cache key: ${key}`)
     localStorage.removeItem(key)
   })
-  
+
   console.log(`Cleared ${appKeys.length} cache items`)
 }
 
@@ -40,12 +39,12 @@ export const clearAllCacheData = (): void => {
  */
 export const clearAuthCache = (): void => {
   console.log('Clearing authentication cache data...')
-  
-  AUTH_CACHE_KEYS.forEach(key => {
+
+  AUTH_CACHE_KEYS.forEach((key) => {
     console.log(`Removing auth cache key: ${key}`)
     localStorage.removeItem(key)
   })
-  
+
   console.log('Authentication cache cleared')
 }
 
@@ -57,7 +56,7 @@ export const detectCacheCorruption = (): boolean => {
   try {
     // Check for auth token
     const authToken = localStorage.getItem('supabase.auth.token')
-    
+
     // If we have an auth token, try to parse it
     if (authToken) {
       try {
@@ -67,11 +66,11 @@ export const detectCacheCorruption = (): boolean => {
         return true
       }
     }
-    
+
     // Check for corrupted data in our application cache
     const keys = Object.keys(localStorage)
-    const appKeys = keys.filter(key => key.startsWith(CACHE_PREFIX))
-    
+    const appKeys = keys.filter((key) => key.startsWith(CACHE_PREFIX))
+
     for (const key of appKeys) {
       try {
         const value = localStorage.getItem(key)
@@ -83,7 +82,7 @@ export const detectCacheCorruption = (): boolean => {
         return true
       }
     }
-    
+
     return false
   } catch (e) {
     console.error('Error checking cache corruption:', e)
@@ -120,13 +119,13 @@ export const attemptCacheRecovery = (): boolean => {
  */
 export const setupGlobalCacheRecovery = (): void => {
   // Add to window for debugging/manual recovery
-  (window as any).__bakersDozenCacheRecovery = {
+  ;(window as any).__DoughDozenCacheRecovery = {
     clearAllCacheData,
     clearAuthCache,
     detectCacheCorruption,
-    attemptCacheRecovery
+    attemptCacheRecovery,
   }
-  
+
   // Add automatic recovery on page load
   window.addEventListener('load', () => {
     // Check for URL parameter that indicates we should clear cache
@@ -134,10 +133,11 @@ export const setupGlobalCacheRecovery = (): void => {
     if (urlParams.has('clear_cache')) {
       console.log('Clear cache parameter detected, clearing all cache data')
       clearAllCacheData()
-      
+
       // Remove the parameter from the URL
       urlParams.delete('clear_cache')
-      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : '')
+      const newUrl =
+        window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : '')
       window.history.replaceState({}, document.title, newUrl)
     }
   })
@@ -148,5 +148,5 @@ export default {
   clearAuthCache,
   detectCacheCorruption,
   attemptCacheRecovery,
-  setupGlobalCacheRecovery
+  setupGlobalCacheRecovery,
 }

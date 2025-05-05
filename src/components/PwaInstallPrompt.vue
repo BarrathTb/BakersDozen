@@ -1,7 +1,7 @@
 <template>
   <v-snackbar v-model="showInstallPrompt" :timeout="10000" color="primary" location="bottom">
     <div class="d-flex align-center">
-      <span>Install Bakers Dozen for offline use</span>
+      <span>Install Dough Tracker for offline use</span>
       <v-spacer></v-spacer>
       <v-btn variant="text" @click="installPwa"> Install </v-btn>
       <v-btn variant="text" @click="closePrompt"> Dismiss </v-btn>

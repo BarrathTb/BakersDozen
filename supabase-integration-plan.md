@@ -1,6 +1,6 @@
 # Comprehensive Supabase Integration Plan
 
-This document outlines a complete strategy for integrating Supabase into the Bakers Dozen application, replacing the current localStorage implementation with a robust, scalable backend solution.
+This document outlines a complete strategy for integrating Supabase into the Dough Dozen application, replacing the current localStorage implementation with a robust, scalable backend solution.
 
 ## Table of Contents
 
@@ -50,7 +50,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'bakers-dozen',
+      'x-application-name': 'Dough-dozen',
     },
   },
   realtime: {
@@ -285,7 +285,7 @@ export const db = {
       // Check if we're offline
       if (!getConnectionStatus()) {
         // Return cached data if available
-        const cachedData = localStorage.getItem(`bakersDozen_${table}`)
+        const cachedData = localStorage.getItem(`DoughDozen_${table}`)
         if (cachedData) {
           return JSON.parse(cachedData)
         }
@@ -297,14 +297,14 @@ export const db = {
       if (error) throw error
 
       // Cache the data
-      localStorage.setItem(`bakersDozen_${table}`, JSON.stringify(data))
+      localStorage.setItem(`DoughDozen_${table}`, JSON.stringify(data))
 
       return data as Tables[T][]
     } catch (error) {
       console.error(`Error fetching all records from ${table}:`, error)
 
       // Return cached data if available
-      const cachedData = localStorage.getItem(`bakersDozen_${table}`)
+      const cachedData = localStorage.getItem(`DoughDozen_${table}`)
       if (cachedData) {
         return JSON.parse(cachedData)
       }
@@ -865,7 +865,7 @@ Create comprehensive documentation for the Supabase integration:
 ````markdown
 # Supabase Integration Documentation
 
-This document provides comprehensive documentation for the Supabase integration in the Bakers Dozen application.
+This document provides comprehensive documentation for the Supabase integration in the Dough Dozen application.
 
 ## Authentication
 

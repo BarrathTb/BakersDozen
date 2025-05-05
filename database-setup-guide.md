@@ -1,6 +1,6 @@
-# Database Setup Guide for Bakers Dozen
+# Database Setup Guide for Dough Dozen
 
-This guide explains how to set up the database for the Bakers Dozen application using either SQL Server or PostgreSQL/Supabase.
+This guide explains how to set up the database for the Dough Dozen application using either SQL Server or PostgreSQL/Supabase.
 
 ## Option 1: SQL Server Setup
 
@@ -14,12 +14,12 @@ This guide explains how to set up the database for the Bakers Dozen application 
 
    - Right-click on "Databases" in the Object Explorer
    - Select "New Database"
-   - Enter "BakersDozen" as the database name
+   - Enter "DoughDozen" as the database name
    - Click "OK"
 
 3. **Run the SQL script**
    - Open the `supabase/migrations/20250321_initial_schema.sql` file
-   - In SSMS, with the BakersDozen database selected, click "New Query"
+   - In SSMS, with the DoughDozen database selected, click "New Query"
    - Paste the contents of the SQL file
    - Click "Execute"
 
@@ -28,13 +28,13 @@ This guide explains how to set up the database for the Bakers Dozen application 
 For SQL Server, you'll need a connection string like this in your `.env` file:
 
 ```
-DB_CONNECTION_STRING=Server=localhost;Database=BakersDozen;Trusted_Connection=True;
+DB_CONNECTION_STRING=Server=localhost;Database=DoughDozen;Trusted_Connection=True;
 ```
 
 If you're using SQL authentication instead of Windows authentication:
 
 ```
-DB_CONNECTION_STRING=Server=localhost;Database=BakersDozen;User Id=YourUsername;Password=YourPassword;
+DB_CONNECTION_STRING=Server=localhost;Database=DoughDozen;User Id=YourUsername;Password=YourPassword;
 ```
 
 ### Connecting in Code
@@ -73,12 +73,12 @@ async function connectToDatabase() {
 2. **Create a new database**
 
    ```bash
-   createdb bakersDozen
+   createdb DoughDozen
    ```
 
 3. **Run the SQL script**
    ```bash
-   psql -d bakersDozen -f supabase/migrations/20250321_initial_schema_postgres.sql
+   psql -d DoughDozen -f supabase/migrations/20250321_initial_schema_postgres.sql
    ```
 
 ### Supabase Setup

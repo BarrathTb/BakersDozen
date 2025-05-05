@@ -1,6 +1,6 @@
 # Database Service Implementation Guide
 
-This directory contains sample implementations for connecting the Bakers Dozen application to different database systems. The `database-implementation.ts` file provides example code for both SQL Server and Supabase implementations.
+This directory contains sample implementations for connecting the Dough Dozen application to different database systems. The `database-implementation.ts` file provides example code for both SQL Server and Supabase implementations.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ DB_TYPE=sqlserver
 DB_USER=your_username
 DB_PASSWORD=your_password
 DB_SERVER=localhost
-DB_NAME=BakersDozen
+DB_NAME=DoughDozen
 ```
 
 ### For Supabase:

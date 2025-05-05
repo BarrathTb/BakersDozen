@@ -1,16 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
 import { supabase } from '../services/supabase'
-import { auth } from '../services/auth'
+import { useAuthStore } from '../stores/auth'
 
 // Layouts
 import MainLayout from '../layouts/MainLayout.vue'
 
 // Views
 import DashboardView from '../views/DashboardView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import LoginView from '../views/LoginView.vue'
 import SignupView from '../views/SignupView.vue'
-import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 
 const routes = [
   {
@@ -149,41 +148,40 @@ let failedNavigationAttempts = 0
 // Enhanced navigation guard
 router.beforeEach(async (to, from, next) => {
   // Set document title
-  document.title = `${to.meta.title || 'Bakers Dozen'} - Inventory Management`
-  
+  document.title = `${to.meta.title || 'Dough Dozen'} - Inventory Management`
+
   const authStore = useAuthStore()
-  
+
   // Initialize auth store if not already done
   if (!authInitialized) {
     console.log('Initializing auth store from router guard')
     await authStore.initialize()
     authInitialized = true
   }
-  
+
   // Wait a moment for auth state to stabilize
-  await new Promise(resolve => setTimeout(resolve, 50))
-  
+  await new Promise((resolve) => setTimeout(resolve, 50))
+
   // Check if route requires authentication
-  if (to.matched.some(record => record.meta.requiresAuth)) {
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
     // Get a fresh session check
     const { data } = await supabase.auth.getSession()
-    
+
     if (!data.session || !authStore.isLoggedIn) {
       console.log('No valid session found, redirecting to login')
       next({ name: 'login', query: { redirect: to.fullPath } })
       return
     }
-  
-    
+
     // Check if route is for guests only (login, signup, etc.)
-    if (to.matched.some(record => record.meta.guest) && authStore.isLoggedIn) {
+    if (to.matched.some((record) => record.meta.guest) && authStore.isLoggedIn) {
       console.log('Route is for guests only but user is logged in')
       next({ name: 'dashboard' })
       return
     }
   }
-    
-    next()
+
+  next()
   // } catch (error) {
   //   console.error('Error in router guard:', error)
   //   failedNavigationAttempts++
@@ -194,7 +192,7 @@ router.beforeEach(async (to, from, next) => {
 // After each navigation, check if it was successful
 router.afterEach((to, from) => {
   console.log(`Navigation completed: ${from.path} -> ${to.path}`)
-  
+
   // If we successfully navigated to a new route, reset the failed navigation counter
   if (to.path !== from.path) {
     failedNavigationAttempts = 0

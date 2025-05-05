@@ -105,7 +105,7 @@
 //   user: process.env.DB_USER || 'sa',
 //   password: process.env.DB_PASSWORD || 'YourPassword',
 //   server: process.env.DB_SERVER || 'localhost',
-//   database: process.env.DB_NAME || 'BakersDozen',
+//   database: process.env.DB_NAME || 'DoughDozen',
 //   options: {
 //     trustServerCertificate: true // For development only
 //   }
@@ -154,12 +154,12 @@
 //   async query<T extends keyof Tables>(table: T, whereClause: string, params: any[] = []): Promise<Tables[T][]> {
 //     try {
 //       const request = new sql.Request();
-      
+
 //       // Add parameters
 //       params.forEach((param, index) => {
 //         request.input(`param${index}`, param);
 //       });
-      
+
 //       const result = await request.query(`SELECT * FROM ${table} WHERE ${whereClause}`);
 //       return result.recordset;
 //     } catch (err) {
@@ -176,27 +176,27 @@
 //         ...record,
 //         id: record.id || this.generateId()
 //       };
-      
+
 //       // Create column and value lists
 //       const columns = Object.keys(newRecord).join(', ');
 //       const valueParams = Object.keys(newRecord).map((_, i) => `@param${i}`).join(', ');
-      
+
 //       const request = new sql.Request();
-      
+
 //       // Add parameters
 //       Object.values(newRecord).forEach((value, index) => {
 //         request.input(`param${index}`, value);
 //       });
-      
+
 //       // Insert the record
 //       await request.query(`INSERT INTO ${table} (${columns}) VALUES (${valueParams})`);
-      
+
 //       // Get the inserted record
 //       const result = await this.getById(table, newRecord.id as string);
-      
+
 //       // Notify subscribers
 //       this.notifySubscribers(table, 'insert', result);
-      
+
 //       return result as Tables[T];
 //     } catch (err) {
 //       console.error(`Error inserting record into ${table}:`, err);
@@ -212,30 +212,30 @@
 //         .filter(key => key !== 'id')
 //         .map((key, i) => `${key} = @param${i}`)
 //         .join(', ');
-      
+
 //       const request = new sql.Request();
-      
+
 //       // Add parameters for SET clause
 //       Object.entries(record)
 //         .filter(([key]) => key !== 'id')
 //         .forEach(([_, value], index) => {
 //           request.input(`param${index}`, value);
 //         });
-      
+
 //       // Add ID parameter
 //       request.input('id', record.id);
-      
+
 //       // Update the record
 //       await request.query(`UPDATE ${table} SET ${setClause} WHERE id = @id`);
-      
+
 //       // Get the updated record
 //       const updatedRecord = await this.getById(table, record.id);
-      
+
 //       // Notify subscribers
 //       if (updatedRecord) {
 //         this.notifySubscribers(table, 'update', updatedRecord);
 //       }
-      
+
 //       return updatedRecord;
 //     } catch (err) {
 //       console.error(`Error updating record in ${table}:`, err);
@@ -248,15 +248,15 @@
 //     try {
 //       // Get the record before deleting it
 //       const record = await this.getById(table, id);
-      
+
 //       if (!record) return false;
-      
+
 //       // Delete the record
 //       await sql.query`DELETE FROM ${sql.raw(table)} WHERE id = ${id}`;
-      
+
 //       // Notify subscribers
 //       this.notifySubscribers(table, 'delete', record);
-      
+
 //       return true;
 //     } catch (err) {
 //       console.error(`Error deleting record from ${table}:`, err);
@@ -268,7 +268,7 @@
 //   subscribe(callback: SubscriptionCallback): () => void {
 //     const id = nextSubscriptionId++;
 //     subscriptions[id] = callback;
-    
+
 //     // Return unsubscribe function
 //     return () => {
 //       delete subscriptions[id];
@@ -312,9 +312,9 @@
 //       const { data, error } = await supabase
 //         .from(table)
 //         .select('*');
-      
+
 //       if (error) throw error;
-      
+
 //       return data || [];
 //     } catch (err) {
 //       console.error(`Error fetching all records from ${table}:`, err);
@@ -330,9 +330,9 @@
 //         .select('*')
 //         .eq('id', id)
 //         .single();
-      
+
 //       if (error) throw error;
-      
+
 //       return data;
 //     } catch (err) {
 //       console.error(`Error fetching record by ID from ${table}:`, err);
@@ -346,9 +346,9 @@
 //       const { data, error } = await supabase
 //         .from(table)
 //         .select('*');
-      
+
 //       if (error) throw error;
-      
+
 //       // Apply filter function in memory
 //       return (data || []).filter(filterFn);
 //     } catch (err) {
@@ -365,18 +365,18 @@
 //         ...record,
 //         id: record.id || this.generateId()
 //       };
-      
+
 //       const { data, error } = await supabase
 //         .from(table)
 //         .insert(newRecord)
 //         .select()
 //         .single();
-      
+
 //       if (error) throw error;
-      
+
 //       // Notify subscribers (using Supabase realtime, this might be redundant)
 //       this.notifySubscribers(table, 'insert', data);
-      
+
 //       return data;
 //     } catch (err) {
 //       console.error(`Error inserting record into ${table}:`, err);
@@ -393,12 +393,12 @@
 //         .eq('id', record.id)
 //         .select()
 //         .single();
-      
+
 //       if (error) throw error;
-      
+
 //       // Notify subscribers (using Supabase realtime, this might be redundant)
 //       this.notifySubscribers(table, 'update', data);
-      
+
 //       return data;
 //     } catch (err) {
 //       console.error(`Error updating record in ${table}:`, err);
@@ -411,19 +411,19 @@
 //     try {
 //       // Get the record before deleting it
 //       const record = await this.getById(table, id);
-      
+
 //       if (!record) return false;
-      
+
 //       const { error } = await supabase
 //         .from(table)
 //         .delete()
 //         .eq('id', id);
-      
+
 //       if (error) throw error;
-      
+
 //       // Notify subscribers (using Supabase realtime, this might be redundant)
 //       this.notifySubscribers(table, 'delete', record);
-      
+
 //       return true;
 //     } catch (err) {
 //       console.error(`Error deleting record from ${table}:`, err);
@@ -434,7 +434,7 @@
 //   // Subscribe to changes using Supabase realtime
 //   subscribe(callback: SubscriptionCallback): () => void {
 //     const channels: any[] = [];
-    
+
 //     // Subscribe to each table
 //     Object.keys(Tables).forEach((table) => {
 //       const channel = supabase
@@ -458,10 +458,10 @@
 //           }
 //         })
 //         .subscribe();
-      
+
 //       channels.push(channel);
 //     });
-    
+
 //     // Return unsubscribe function
 //     return () => {
 //       channels.forEach(channel => {

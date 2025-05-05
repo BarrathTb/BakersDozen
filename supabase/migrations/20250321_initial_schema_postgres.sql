@@ -1,5 +1,5 @@
--- Bakers Dozen - Initial Schema for PostgreSQL/Supabase
--- This file creates the database schema and inserts initial data for the Bakers Dozen application
+-- Dough Dozen - Initial Schema for PostgreSQL/Supabase
+-- This file creates the database schema and inserts initial data for the Dough Dozen application
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

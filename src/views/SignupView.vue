@@ -4,7 +4,7 @@
       <v-col cols="12" sm="8" md="6" lg="4">
         <v-card class="elevation-12">
           <v-toolbar color="primary" flat>
-            <v-toolbar-title>Bakers Dozen - Sign Up</v-toolbar-title>
+            <v-toolbar-title>Dough Tracker - Sign Up</v-toolbar-title>
           </v-toolbar>
           <v-card-text>
             <v-form ref="form" v-model="isFormValid" @submit.prevent="signup">

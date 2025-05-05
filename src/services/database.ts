@@ -36,7 +36,7 @@ const subscriptions: Record<number, SubscriptionCallback> = {}
 
 // Cache management
 const CACHE_VERSION = '1.0.0'
-const CACHE_PREFIX = 'bakersDozen_'
+const CACHE_PREFIX = 'DoughTracker_'
 
 // Helper function to get cache key with version
 const getCacheKey = (key: string): string => {

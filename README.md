@@ -1,4 +1,4 @@
-# Bakers Dozen - Inventory Management System
+# Dough Dozen - Inventory Management System
 
 A comprehensive inventory management system for bakeries, helping track ingredients, recipes, bakes, deliveries, and removals.
 

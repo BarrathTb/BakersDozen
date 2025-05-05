@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Create a simple SVG icon with the text "BD" (Bakers Dozen)
+// Create a simple SVG icon with the text "BD" (Dough Dozen)
 const createSVGIcon = (size, text = 'BD') => {
   const fontSize = Math.floor(size * 0.5)
   return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">

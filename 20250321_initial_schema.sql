@@ -1,5 +1,5 @@
--- -- Bakers Dozen - Initial Schema
--- -- This file creates the database schema and inserts initial data for the Bakers Dozen application
+-- -- Dough Dozen - Initial Schema
+-- -- This file creates the database schema and inserts initial data for the Dough Dozen application
 
 -- -- Create tables
 
