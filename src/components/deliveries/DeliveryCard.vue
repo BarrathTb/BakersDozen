@@ -17,13 +17,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue'
+import { defineComponent, type PropType } from 'vue'
 import { format } from 'date-fns'
 
 interface Delivery {
   id: string
   delivery_date: string
   supplier: string
+  item_count: number
   created_by: string
   created_at: string
   created_by_email?: string
