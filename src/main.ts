@@ -96,7 +96,7 @@ const pinia = createPinia()
 app.config.errorHandler = (err, instance, info) => {
   console.error('Vue error handler:', err, info)
 }
-app.use(VueApexCharts)
+app.component('apex-chart', VueApexCharts) // Register globally
 app.use(pinia)
 app.use(router)
 app.use(vuetify)
