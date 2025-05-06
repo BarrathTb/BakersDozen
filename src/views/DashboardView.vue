@@ -170,7 +170,7 @@
 <script lang="ts">
 import { format, subDays } from 'date-fns'
 import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
-import { VueApexCharts } from 'vue3-apexCharts'
+
 import { useDisplay } from 'vuetify' // Import useDisplay
 import InventoryCard from '../components/inventory/InventoryCard.vue' // Import InventoryCard
 import { db, type Ingredient } from '../services/database'
