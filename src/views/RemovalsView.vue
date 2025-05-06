@@ -3,12 +3,12 @@
     <h1 class="text-h4 mb-4">Ingredient Removals</h1>
 
     <v-card class="mb-4">
-      <v-card-title class="d-flex justify-space-between">
-        <div>
-          <v-icon left>mdi-minus-circle</v-icon>
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div class="d-flex align-center mr-2">
+          <v-icon left class="mr-2">mdi-minus-circle</v-icon>
           Removal History
         </div>
-        <v-btn color="primary" to="/removals/new">
+        <v-btn color="primary" size="small" to="/removals/new">
           <v-icon left>mdi-plus</v-icon>
           New Removal
         </v-btn>
@@ -16,6 +16,7 @@
 
       <v-card-text>
         <v-data-table
+          v-if="viewType === 'table'"
           :headers="headers"
           :items="removals"
           :loading="loading"
@@ -39,8 +40,27 @@
             </v-btn>
           </template>
         </v-data-table>
+
+        <!-- Grid View -->
+        <v-row v-else-if="viewType === 'grid'" class="mt-4">
+          <v-col v-for="removal in removals" :key="removal.id" cols="12" sm="6" md="4" lg="3">
+            <removal-card :removal="removal" @view-details="viewDetails" />
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
+
+    <!-- View Toggle (Optional: hide on mobile if automatic) -->
+    <div v-if="!display.smAndDown.value" class="d-flex justify-end mt-4">
+      <v-btn-toggle v-model="viewType" mandatory>
+        <v-btn value="table">
+          <v-icon>mdi-table</v-icon>
+        </v-btn>
+        <v-btn value="grid">
+          <v-icon>mdi-view-grid</v-icon>
+        </v-btn>
+      </v-btn-toggle>
+    </div>
 
     <!-- Removal Details Dialog -->
     <v-dialog v-model="detailsDialog" max-width="800px">
@@ -100,10 +120,16 @@
 <script lang="ts">
 import { format } from 'date-fns'
 import { defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { useDisplay } from 'vuetify' // Import useDisplay
+import RemovalCard from '../components/removals/RemovalCard.vue' // Import RemovalCard
 import { db } from '../services/database'
 
 export default defineComponent({
   name: 'RemovalsView',
+
+  components: {
+    RemovalCard, // Register RemovalCard
+  },
 
   setup() {
     const loading = ref(true)
@@ -135,6 +161,8 @@ export default defineComponent({
       }>
     >([])
     const loadingItems = ref(false)
+    const display = useDisplay() // Use the display composable
+    const viewType = ref(display.smAndDown.value ? 'grid' : 'table') // Initialize viewType based on screen size
 
     const headers = [
       { text: 'Date', value: 'removal_date' },
@@ -282,6 +310,8 @@ export default defineComponent({
       formatDate,
       getReasonColor,
       viewDetails,
+      display, // Expose display
+      viewType, // Expose viewType
     }
   },
 })

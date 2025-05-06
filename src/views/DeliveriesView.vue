@@ -3,12 +3,12 @@
     <h1 class="text-h4 mb-4">Ingredient Deliveries</h1>
 
     <v-card class="mb-4">
-      <v-card-title class="d-flex justify-space-between">
-        <div>
-          <v-icon left>mdi-truck-delivery</v-icon>
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div class="d-flex align-center mr-2">
+          <v-icon left class="mr-2">mdi-truck-delivery</v-icon>
           Delivery History
         </div>
-        <v-btn color="primary" to="/deliveries/new">
+        <v-btn color="primary" size="small" to="/deliveries/new">
           <v-icon left>mdi-plus</v-icon>
           New Delivery
         </v-btn>
@@ -16,6 +16,7 @@
 
       <v-card-text>
         <v-data-table
+          v-if="viewType === 'table'"
           :headers="headers"
           :items="deliveries"
           :loading="loading"
@@ -33,8 +34,27 @@
             </v-btn>
           </template>
         </v-data-table>
+
+        <!-- Grid View -->
+        <v-row v-else-if="viewType === 'grid'" class="mt-4">
+          <v-col v-for="delivery in deliveries" :key="delivery.id" cols="12" sm="6" md="4" lg="3">
+            <delivery-card :delivery="delivery" @view-details="viewDetails" />
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
+
+    <!-- View Toggle (Optional: hide on mobile if automatic) -->
+    <div v-if="!display.smAndDown.value" class="d-flex justify-end mt-4">
+      <v-btn-toggle v-model="viewType" mandatory>
+        <v-btn value="table">
+          <v-icon>mdi-table</v-icon>
+        </v-btn>
+        <v-btn value="grid">
+          <v-icon>mdi-view-grid</v-icon>
+        </v-btn>
+      </v-btn-toggle>
+    </div>
 
     <!-- Delivery Details Dialog -->
     <v-dialog v-model="detailsDialog" max-width="800px">
@@ -91,6 +111,8 @@
 <script lang="ts">
 import { format } from 'date-fns'
 import { defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { useDisplay } from 'vuetify' // Import useDisplay
+import DeliveryCard from '../components/deliveries/DeliveryCard.vue' // Import DeliveryCard
 import { db } from '../services/database'
 
 interface Delivery {
@@ -100,6 +122,7 @@ interface Delivery {
   created_by: string
   created_at: string
   created_by_email?: string // Add this property
+  item_count?: number // Add item_count for card display
 }
 
 interface DeliveryItem {
@@ -131,6 +154,10 @@ interface User {
 export default defineComponent({
   name: 'DeliveriesView',
 
+  components: {
+    DeliveryCard, // Register DeliveryCard
+  },
+
   setup() {
     const loading = ref(true)
     const deliveries = ref<Delivery[]>([])
@@ -138,6 +165,8 @@ export default defineComponent({
     const selectedDelivery = ref<Delivery | null>(null)
     const deliveryItems = ref<DeliveryItem[]>([])
     const loadingItems = ref(false)
+    const display = useDisplay() // Use the display composable
+    const viewType = ref(display.smAndDown.value ? 'grid' : 'table') // Initialize viewType based on screen size
 
     const headers = [
       { text: 'Date', value: 'delivery_date' },
@@ -296,6 +325,8 @@ export default defineComponent({
       itemHeaders,
       formatDate,
       viewDetails,
+      display, // Expose display
+      viewType, // Expose viewType
     }
   },
 })

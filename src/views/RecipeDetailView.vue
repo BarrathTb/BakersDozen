@@ -93,6 +93,11 @@
         <v-card-title>
           <v-icon left>mdi-food-variant</v-icon>
           Ingredients
+          <v-spacer></v-spacer>
+          <v-btn small color="primary" @click="openAddIngredientDialog">
+            <v-icon left>mdi-plus</v-icon>
+            Add Ingredient
+          </v-btn>
         </v-card-title>
 
         <v-card-text>
@@ -102,6 +107,7 @@
           </v-alert>
 
           <v-data-table
+            v-if="!isMobile"
             :headers="ingredientHeaders"
             :items="recipe.ingredients"
             hide-default-footer
@@ -128,6 +134,32 @@
               <v-icon v-else color="error"> mdi-alert-circle </v-icon>
             </template>
           </v-data-table>
+
+          <div v-else>
+            <v-card v-for="ingredient in recipe.ingredients" :key="ingredient.id" class="mb-3">
+              <v-card-text>
+                <div class="font-weight-bold">{{ ingredient.name }}</div>
+                <div>Required: {{ ingredient.quantity }} {{ ingredient.unit }}</div>
+                <div>
+                  In Stock:
+                  <v-chip
+                    :color="getQuantityColor(ingredient.current_quantity, ingredient.quantity)"
+                    text-color="white"
+                    small
+                  >
+                    {{ ingredient.current_quantity }} {{ ingredient.unit }}
+                  </v-chip>
+                </div>
+                <div>
+                  Status:
+                  <v-icon v-if="ingredient.current_quantity >= ingredient.quantity" color="success">
+                    mdi-check-circle
+                  </v-icon>
+                  <v-icon v-else color="error"> mdi-alert-circle </v-icon>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
         </v-card-text>
       </v-card>
 
@@ -140,6 +172,7 @@
 
         <v-card-text>
           <v-data-table
+            v-if="!isMobile"
             :headers="bakeHeaders"
             :items="bakes"
             :loading="loadingBakes"
@@ -160,16 +193,73 @@
               {{ item.baker }}
             </template>
           </v-data-table>
+
+          <div v-else>
+            <v-card v-for="bake in bakes" :key="bake.id" class="mb-3">
+              <v-card-text>
+                <div><strong>Date:</strong> {{ formatDate(bake.bake_date) }}</div>
+                <div><strong>Actual Yield:</strong> {{ bake.actual_yield }}</div>
+                <div>
+                  <strong>Efficiency:</strong>
+                  <v-chip :color="getEfficiencyColor(bake.efficiency)" text-color="white" small>
+                    {{ bake.efficiency.toFixed(1) }}%
+                  </v-chip>
+                </div>
+                <div><strong>Baker:</strong> {{ bake.baker }}</div>
+              </v-card-text>
+            </v-card>
+          </div>
         </v-card-text>
       </v-card>
     </div>
   </div>
+
+  <!-- Add Ingredient Dialog -->
+  <v-dialog v-model="addIngredientDialog" persistent max-width="600px">
+    <v-card>
+      <v-card-title>
+        <span class="text-h5">Add Ingredient to Recipe</span>
+      </v-card-title>
+      <v-card-text>
+        <v-container>
+          <v-row>
+            <v-col cols="12">
+              <!-- Ingredient Select -->
+              <v-select
+                v-model="selectedIngredientId"
+                :items="availableIngredients"
+                item-title="name"
+                item-value="id"
+                label="Select Ingredient"
+                required
+              ></v-select>
+            </v-col>
+            <v-col cols="12">
+              <!-- Quantity Input -->
+              <v-text-field
+                v-model.number="ingredientQuantity"
+                label="Quantity Required"
+                type="number"
+                required
+              ></v-text-field>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="blue darken-1" text @click="closeAddIngredientDialog">Cancel</v-btn>
+        <v-btn color="blue darken-1" text @click="saveRecipeIngredient">Save</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script lang="ts">
 import { format } from 'date-fns'
 import { computed, defineComponent, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify' // Import useDisplay
 import { db, type Bake as DbBake } from '../services/database'
 
 interface RecipeIngredient {
@@ -206,11 +296,19 @@ export default defineComponent({
     const router = useRouter()
     const recipeId = route.params.id as string
 
+    const display = useDisplay() // Use the display composable
+    const isMobile = computed(() => display.smAndDown.value) // Computed property for mobile view
+
     const loading = ref(true)
     const recipe = ref<Recipe | null>(null)
 
     const loadingBakes = ref(true)
     const bakes = ref<Bake[]>([])
+
+    const addIngredientDialog = ref(false)
+    const selectedIngredientId = ref<string | null>(null)
+    const ingredientQuantity = ref<number>(0)
+    const availableIngredients = ref<{ id: string; name: string }[]>([])
 
     const ingredientHeaders = [
       { text: 'Ingredient', value: 'name' },
@@ -340,6 +438,47 @@ export default defineComponent({
       })
     }
 
+    const fetchAvailableIngredients = async () => {
+      try {
+        availableIngredients.value = await db.getAll<'ingredients'>('ingredients')
+      } catch (error) {
+        console.error('Error fetching available ingredients:', error)
+      }
+    }
+
+    const openAddIngredientDialog = async () => {
+      await fetchAvailableIngredients()
+      addIngredientDialog.value = true
+    }
+
+    const closeAddIngredientDialog = () => {
+      addIngredientDialog.value = false
+      selectedIngredientId.value = null
+      ingredientQuantity.value = 0
+    }
+
+    const saveRecipeIngredient = async () => {
+      if (!selectedIngredientId.value || ingredientQuantity.value <= 0) {
+        alert('Please select an ingredient and enter a valid quantity.')
+        return
+      }
+
+      try {
+        // Assuming 'recipe_ingredients' is the correct table name
+        await db.insert('recipe_ingredients', {
+          recipe_id: recipeId,
+          ingredient_id: selectedIngredientId.value,
+          quantity: ingredientQuantity.value,
+        })
+        console.log('Ingredient added to recipe successfully!')
+        closeAddIngredientDialog()
+        fetchRecipe() // Refresh recipe details to show the new ingredient
+      } catch (error) {
+        console.error('Error saving recipe ingredient:', error)
+        alert('Failed to add ingredient to recipe. Please try again.')
+      }
+    }
+
     onMounted(() => {
       fetchRecipe().then(() => {
         fetchBakeHistory()
@@ -358,6 +497,16 @@ export default defineComponent({
       getQuantityColor,
       getEfficiencyColor,
       startBake,
+      isMobile, // Expose isMobile computed property
+
+      // New properties and methods for adding ingredients
+      addIngredientDialog,
+      selectedIngredientId,
+      ingredientQuantity,
+      availableIngredients,
+      openAddIngredientDialog,
+      closeAddIngredientDialog,
+      saveRecipeIngredient,
     }
   },
 })

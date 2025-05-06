@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import MainLayout from '../layouts/MainLayout.vue'
 
 // Views
+
 import DashboardView from '../views/DashboardView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -33,6 +34,12 @@ const routes = [
         name: 'inventory-detail',
         component: () => import('../views/InventoryDetailView.vue'),
         meta: { title: 'Ingredient Details' },
+      },
+      {
+        path: 'inventory/new',
+        name: 'new-ingredient',
+        component: () => import('../views/NewIngredientView.vue'), // Ensure this file exists in the views folder
+        meta: { title: 'New Ingredient' },
       },
       {
         path: 'deliveries',

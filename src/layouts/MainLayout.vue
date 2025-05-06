@@ -12,7 +12,15 @@
       <v-toolbar-title>Dough Tracker</v-toolbar-title>
       <v-spacer></v-spacer>
       <template v-slot:append>
-        <v-btn icon @click="toggleTheme">
+        <v-btn
+          icon
+          @click="user ? logout() : router.push('/login')"
+          :title="user ? 'Logout' : 'Login'"
+          :color="user ? 'green' : 'red'"
+        >
+          <v-icon>{{ user ? 'mdi-logout' : 'mdi-login' }}</v-icon>
+        </v-btn>
+        <v-btn icon @click="toggleTheme" title="Toggle Theme">
           <v-icon>{{ isDarkMode ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
         </v-btn>
         <v-menu v-if="user" v-model="userMenu" :close-on-content-click="false" location="bottom">
@@ -195,6 +203,7 @@ export default defineComponent({
       logout,
       logo,
       toggleTheme,
+      router, // Expose router for navigation in template
     }
   },
 })

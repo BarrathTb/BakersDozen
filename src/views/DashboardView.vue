@@ -53,36 +53,53 @@
         ></v-text-field>
       </v-card-title>
 
-      <v-data-table
-        :headers="headers"
-        :items="ingredients"
-        :search="search"
-        :loading="loading"
-        loading-text="Loading inventory data..."
-        no-data-text="No ingredients found"
-        item-key="id"
-        :sort-by="[{ key: 'name' }]"
-      >
-        <template v-slot:[`item.current_quantity`]="{ item }">
-          <v-chip
-            :color="getQuantityColor(item.current_quantity, item.min_quantity)"
-            text-color="white"
-            small
+      <v-card-text>
+        <v-data-table
+          v-if="viewType === 'table'"
+          :headers="headers"
+          :items="ingredients"
+          :search="search"
+          :loading="loading"
+          loading-text="Loading inventory data..."
+          no-data-text="No ingredients found"
+          item-key="id"
+          :sort-by="[{ key: 'name' }]"
+        >
+          <template v-slot:[`item.current_quantity`]="{ item }">
+            <v-chip
+              :color="getQuantityColor(item.current_quantity, item.min_quantity)"
+              text-color="white"
+              small
+            >
+              {{ item.current_quantity }} {{ item.unit }}
+            </v-chip>
+          </template>
+
+          <template v-slot:[`item.last_updated`]="{ item }">
+            {{ formatDate(item.last_updated) }}
+          </template>
+
+          <template v-slot:[`item.actions`]="{ item }">
+            <v-btn icon small color="primary" :to="`/inventory/${item.id}`" title="View Details">
+              <v-icon>mdi-eye</v-icon>
+            </v-btn>
+          </template>
+        </v-data-table>
+
+        <!-- Grid View -->
+        <v-row v-else-if="viewType === 'grid'" class="mt-4">
+          <v-col
+            v-for="ingredient in ingredients"
+            :key="ingredient.id"
+            cols="12"
+            sm="6"
+            md="4"
+            lg="3"
           >
-            {{ item.current_quantity }} {{ item.unit }}
-          </v-chip>
-        </template>
-
-        <template v-slot:[`item.last_updated`]="{ item }">
-          {{ formatDate(item.last_updated) }}
-        </template>
-
-        <template v-slot:[`item.actions`]="{ item }">
-          <v-btn icon small color="primary" :to="`/inventory/${item.id}`" title="View Details">
-            <v-icon>mdi-eye</v-icon>
-          </v-btn>
-        </template>
-      </v-data-table>
+            <inventory-card :ingredient="ingredient" />
+          </v-col>
+        </v-row>
+      </v-card-text>
     </v-card>
 
     <!-- Usage Trends Chart -->
@@ -153,7 +170,9 @@
 <script lang="ts">
 import { format, subDays } from 'date-fns'
 import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
-import VueApexCharts from 'vue3-apexcharts'
+import VueApexCharts from 'vue3-apexCharts'
+import { useDisplay } from 'vuetify' // Import useDisplay
+import InventoryCard from '../components/inventory/InventoryCard.vue' // Import InventoryCard
 import { db, type Ingredient } from '../services/database'
 import { supabase } from '../services/supabase'
 
@@ -161,6 +180,7 @@ export default defineComponent({
   name: 'DashboardView',
   components: {
     apexchart: VueApexCharts,
+    InventoryCard, // Add InventoryCard component
   },
 
   setup() {
@@ -169,6 +189,8 @@ export default defineComponent({
     const loading = ref(true)
     const ingredients = ref<Ingredient[]>([])
     const chartKey = ref(0)
+    const display = useDisplay() // Use the display composable
+    const viewType = ref(display.smAndDown.value ? 'grid' : 'table') // Initialize viewType based on screen size
 
     const headers = [
       { text: 'Name', value: 'name' },
@@ -376,6 +398,8 @@ export default defineComponent({
       chartKey,
       lowStockCount,
       outOfStockCount,
+      display, // Expose display
+      viewType, // Expose viewType
     }
   },
 })

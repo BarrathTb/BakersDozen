@@ -39,7 +39,7 @@ const lightTheme: ThemeDefinition = {
   },
 }
 
-export default createVuetify({
+const vuetify = createVuetify({
   components,
   directives,
   theme: {
@@ -89,3 +89,5 @@ export default createVuetify({
     },
   },
 })
+
+export default vuetify

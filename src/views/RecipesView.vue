@@ -3,12 +3,12 @@
     <h1 class="text-h4 mb-4">Recipes</h1>
 
     <v-card class="mb-4">
-      <v-card-title class="d-flex justify-space-between">
-        <div>
-          <v-icon left>mdi-book-open-variant</v-icon>
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div class="d-flex align-center mr-2">
+          <v-icon left class="mr-2">mdi-book-open-variant</v-icon>
           Recipe Library
         </div>
-        <v-btn color="primary" to="/recipes/new">
+        <v-btn color="primary" size="small" to="/recipes/new">
           <v-icon left>mdi-plus</v-icon>
           New Recipe
         </v-btn>
@@ -16,6 +16,7 @@
 
       <v-card-text>
         <v-data-table
+          v-if="viewType === 'table'"
           :headers="headers"
           :items="recipes"
           :loading="loading"
@@ -50,11 +51,47 @@
             </v-btn>
           </template>
         </v-data-table>
+
+        <!-- Grid View -->
+        <v-row v-else-if="viewType === 'grid'" class="mt-4">
+          <v-col v-for="recipe in recipes" :key="recipe.id" cols="12" sm="6" md="4" lg="3">
+            <v-card>
+              <v-card-title class="text-h6">
+                {{ recipe.name }}
+              </v-card-title>
+
+              <v-card-text>
+                <div class="mb-2">
+                  <v-icon small class="mr-1">mdi-scale</v-icon>
+                  Expected Yield: {{ recipe.expected_yield }} units
+                </div>
+                <div>
+                  <v-icon small class="mr-1">mdi-food-variant</v-icon>
+                  {{ recipe.ingredient_count }} ingredients
+                </div>
+              </v-card-text>
+
+              <v-divider></v-divider>
+
+              <v-card-actions>
+                <v-btn text color="primary" :to="`/recipes/${recipe.id}`">
+                  <v-icon left>mdi-eye</v-icon>
+                  Details
+                </v-btn>
+                <v-spacer></v-spacer>
+                <v-btn text color="secondary" @click="startBake(recipe)">
+                  <v-icon left>mdi-bread-slice</v-icon>
+                  Bake
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
 
     <!-- View Toggle -->
-    <div class="d-flex justify-end mt-4">
+    <div v-if="!display.smAndDown.value" class="d-flex justify-end mt-4">
       <v-btn-toggle v-model="viewType" mandatory>
         <v-btn value="table">
           <v-icon>mdi-table</v-icon>
@@ -64,48 +101,13 @@
         </v-btn>
       </v-btn-toggle>
     </div>
-
-    <!-- Grid View -->
-    <v-row v-if="viewType === 'grid'" class="mt-4">
-      <v-col v-for="recipe in recipes" :key="recipe.id" cols="12" sm="6" md="4" lg="3">
-        <v-card>
-          <v-card-title class="text-h6">
-            {{ recipe.name }}
-          </v-card-title>
-
-          <v-card-text>
-            <div class="mb-2">
-              <v-icon small class="mr-1">mdi-scale</v-icon>
-              Expected Yield: {{ recipe.expected_yield }} units
-            </div>
-            <div>
-              <v-icon small class="mr-1">mdi-food-variant</v-icon>
-              {{ recipe.ingredient_count }} ingredients
-            </div>
-          </v-card-text>
-
-          <v-divider></v-divider>
-
-          <v-card-actions>
-            <v-btn text color="primary" :to="`/recipes/${recipe.id}`">
-              <v-icon left>mdi-eye</v-icon>
-              Details
-            </v-btn>
-            <v-spacer></v-spacer>
-            <v-btn text color="secondary" @click="startBake(recipe)">
-              <v-icon left>mdi-bread-slice</v-icon>
-              Bake
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-col>
-    </v-row>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify' // Import useDisplay
 import { db, type Recipe } from '../services/database'
 
 export default defineComponent({
@@ -116,7 +118,8 @@ export default defineComponent({
     const loading = ref(true)
     const recipes = ref<Recipe[]>([])
     const search = ref('')
-    const viewType = ref('table')
+    const display = useDisplay() // Use the display composable
+    const viewType = ref(display.smAndDown.value ? 'grid' : 'table') // Initialize viewType based on screen size
 
     const headers = [
       { text: 'Name', value: 'name' },
@@ -173,6 +176,7 @@ export default defineComponent({
       viewType,
       headers,
       startBake,
+      display, // Expose display
     }
   },
 })

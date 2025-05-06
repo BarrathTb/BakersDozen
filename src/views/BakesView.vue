@@ -3,12 +3,12 @@
     <h1 class="text-h4 mb-4">Bake Records</h1>
 
     <v-card class="mb-4">
-      <v-card-title class="d-flex justify-space-between">
-        <div>
-          <v-icon left>mdi-bread-slice</v-icon>
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div class="d-flex align-center mr-2">
+          <v-icon left class="mr-2">mdi-bread-slice</v-icon>
           Bake History
         </div>
-        <v-btn color="primary" to="/bakes/new">
+        <v-btn color="primary" size="small" to="/bakes/new">
           <v-icon left>mdi-plus</v-icon>
           New Bake
         </v-btn>
@@ -16,6 +16,7 @@
 
       <v-card-text>
         <v-data-table
+          v-if="viewType === 'table'"
           :headers="headers"
           :items="bakes"
           :loading="loading"
@@ -39,8 +40,27 @@
             </v-btn>
           </template>
         </v-data-table>
+
+        <!-- Grid View -->
+        <v-row v-else-if="viewType === 'grid'" class="mt-4">
+          <v-col v-for="bake in bakes" :key="bake.id" cols="12" sm="6" md="4" lg="3">
+            <bake-card :bake="bake" @view-details="viewDetails" />
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
+
+    <!-- View Toggle (Optional: hide on mobile if automatic) -->
+    <div v-if="!display.smAndDown.value" class="d-flex justify-end mt-4">
+      <v-btn-toggle v-model="viewType" mandatory>
+        <v-btn value="table">
+          <v-icon>mdi-table</v-icon>
+        </v-btn>
+        <v-btn value="grid">
+          <v-icon>mdi-view-grid</v-icon>
+        </v-btn>
+      </v-btn-toggle>
+    </div>
 
     <!-- Bake Details Dialog -->
     <v-dialog v-model="detailsDialog" max-width="800px">
@@ -116,6 +136,8 @@
 <script lang="ts">
 import { format } from 'date-fns'
 import { defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { useDisplay } from 'vuetify' // Import useDisplay
+import BakeCard from '../components/bakes/BakeCard.vue' // Import BakeCard
 import { db } from '../services/database'
 
 interface Bake {
@@ -167,6 +189,10 @@ interface Ingredient {
 export default defineComponent({
   name: 'BakesView',
 
+  components: {
+    BakeCard, // Register BakeCard
+  },
+
   setup() {
     const loading = ref(true)
     const bakes = ref<Bake[]>([])
@@ -174,6 +200,8 @@ export default defineComponent({
     const selectedBake = ref<Bake | null>(null)
     const bakeIngredients = ref<Ingredient[]>([])
     const loadingIngredients = ref(false)
+    const display = useDisplay() // Use the display composable
+    const viewType = ref(display.smAndDown.value ? 'grid' : 'table') // Initialize viewType based on screen size
 
     const headers = [
       { text: 'Date', value: 'bake_date' },
@@ -345,6 +373,8 @@ export default defineComponent({
       formatDate,
       getEfficiencyColor,
       viewDetails,
+      display, // Expose display
+      viewType, // Expose viewType
     }
   },
 })

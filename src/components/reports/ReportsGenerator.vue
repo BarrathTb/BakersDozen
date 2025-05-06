@@ -12,6 +12,8 @@
           <v-select
             v-model="reportType"
             :items="reportTypes"
+            item-title="text"
+            item-value="value"
             label="Report Type"
             :rules="[(v) => !!v || 'Report type is required']"
             required
@@ -133,7 +135,7 @@
     </v-card>
 
     <!-- Report Results -->
-    <v-card v-if="reportData.length > 0" class="mt-4">
+    <v-card v-if="reportData?.length > 0" class="mt-4">
       <v-card-title class="d-flex justify-space-between">
         <div>
           <v-icon left>mdi-file-document</v-icon>

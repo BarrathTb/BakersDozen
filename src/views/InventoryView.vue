@@ -60,6 +60,31 @@
       </v-col>
     </v-row>
 
+    <v-row class="mb-4">
+      <v-col cols="12" md="4">
+        <v-btn block color="primary" to="/inventory/new" height="50">
+          <v-icon left class="mr-2">mdi-plus-circle</v-icon>
+          New Ingredient
+        </v-btn>
+      </v-col>
+    </v-row>
+
+    <!-- Inventory List -->
+    <!-- View Toggle -->
+    <div class="d-flex justify-end mt-4">
+      <!-- View Toggle (Optional: hide on mobile if automatic) -->
+      <div v-if="!display.smAndDown.value" class="d-flex justify-end mt-4">
+        <v-btn-toggle v-model="viewType" mandatory>
+          <v-btn value="table">
+            <v-icon>mdi-table</v-icon>
+          </v-btn>
+          <v-btn value="grid">
+            <v-icon>mdi-view-grid</v-icon>
+          </v-btn>
+        </v-btn-toggle>
+      </div>
+    </div>
+
     <!-- Inventory List -->
     <v-card>
       <v-card-title>
@@ -78,6 +103,7 @@
 
       <v-card-text>
         <v-data-table
+          v-if="viewType === 'table'"
           :headers="headers"
           :items="ingredients"
           :search="search"
@@ -85,6 +111,7 @@
           :items-per-page="10"
           class="elevation-1"
           :sort-by="[{ key: 'name' }]"
+          mobile-breakpoint="sm"
         >
           <template v-slot:[`item.current_quantity`]="{ item }">
             <v-chip
@@ -110,33 +137,29 @@
             </v-btn>
           </template>
         </v-data-table>
+
+        <!-- Grid View -->
+        <v-row v-else-if="viewType === 'grid'" class="mt-4">
+          <v-col
+            v-for="ingredient in ingredients"
+            :key="ingredient.id"
+            cols="12"
+            sm="6"
+            md="4"
+            lg="3"
+          >
+            <inventory-card :ingredient="ingredient" @add-to-delivery="addToDelivery(ingredient)" />
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
-
-    <!-- View Toggle -->
-    <div class="d-flex justify-end mt-4">
-      <v-btn-toggle v-model="viewType" mandatory>
-        <v-btn value="table">
-          <v-icon>mdi-table</v-icon>
-        </v-btn>
-        <v-btn value="grid">
-          <v-icon>mdi-view-grid</v-icon>
-        </v-btn>
-      </v-btn-toggle>
-    </div>
-
-    <!-- Grid View -->
-    <v-row v-if="viewType === 'grid'" class="mt-4">
-      <v-col v-for="ingredient in ingredients" :key="ingredient.id" cols="12" sm="6" md="4" lg="3">
-        <inventory-card :ingredient="ingredient" @add-to-delivery="addToDelivery(ingredient)" />
-      </v-col>
-    </v-row>
   </div>
 </template>
 
 <script lang="ts">
 import { format } from 'date-fns'
-import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { defineComponent, onMounted, onUnmounted, ref, computed } from 'vue'
+import { useDisplay } from 'vuetify' // Import useDisplay
 import InventoryCard from '../components/inventory/InventoryCard.vue'
 import { db } from '../services/database'
 
@@ -160,7 +183,8 @@ export default defineComponent({
     const loading = ref(true)
     const ingredients = ref<Ingredient[]>([])
     const search = ref('')
-    const viewType = ref('table')
+    const display = useDisplay() // Use the display composable
+    const viewType = ref(display.smAndDown.value ? 'grid' : 'table') // Initialize viewType based on screen size
 
     const headers = [
       { text: 'Name', value: 'name' },
@@ -253,6 +277,7 @@ export default defineComponent({
       formatDate,
       getQuantityColor,
       addToDelivery,
+      display,
     }
   },
 })

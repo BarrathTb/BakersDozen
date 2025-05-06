@@ -119,8 +119,14 @@
                     :rules="[
                       (v) => !!v || 'Quantity is required',
                       (v) => v > 0 || 'Quantity must be greater than 0',
-                      (v) =>
-                        v <= ingredient.current_quantity || 'Cannot remove more than available',
+                      (v) => {
+                        if (typeof v !== 'number' || !isFinite(v)) return true // Refined check for number type and finiteness
+                        const enteredQuantity = parseFloat(Number(v).toFixed(10)) // Convert to number before toFixed()
+                        const currentQuantity = parseFloat(ingredient.current_quantity.toFixed(10))
+                        return (
+                          enteredQuantity <= currentQuantity || 'Cannot remove more than available'
+                        )
+                      },
                     ]"
                     required
                   ></v-text-field>
@@ -228,7 +234,11 @@ const headers = [
 const isValidQuantities = computed(() => {
   return selectedIngredients.value.every((ingredient) => {
     const quantity = removalQuantities[ingredient.id]
-    return quantity !== undefined && quantity > 0 && quantity <= ingredient.current_quantity
+    return (
+      quantity !== undefined &&
+      quantity > 0 &&
+      parseFloat(quantity.toFixed(10)) <= parseFloat(ingredient.current_quantity.toFixed(10))
+    )
   })
 })
 
@@ -293,6 +303,7 @@ const submitRemoval = async () => {
       removal_id: removalData.id,
       ingredient_id: ingredient.id,
       quantity: removalQuantities[ingredient.id],
+      unit: ingredient.unit, // Include the unit
     }))
 
     const { error: itemsError } = await supabase.from('removal_items').insert(removalItemsToInsert)
