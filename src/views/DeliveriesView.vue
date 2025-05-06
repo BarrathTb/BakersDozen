@@ -122,7 +122,7 @@ interface Delivery {
   created_by: string
   created_at: string
   created_by_email?: string // Add this property
-  item_count?: number // Add item_count for card display
+  item_count: number // Make item_count required
 }
 
 interface DeliveryItem {
