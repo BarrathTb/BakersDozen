@@ -179,7 +179,6 @@ import { supabase } from '../services/supabase'
 export default defineComponent({
   name: 'DashboardView',
   components: {
-    apexchart: VueApexCharts,
     InventoryCard, // Add InventoryCard component
   },
 
