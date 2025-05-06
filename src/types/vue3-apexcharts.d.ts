@@ -1,0 +1,9 @@
+declare module 'vue3-apexcharts' {
+  import { DefineComponent } from 'vue'
+  const component: DefineComponent<
+    Record<string, unknown>,
+    Record<string, unknown>,
+    Record<string, unknown>
+  >
+  export default component
+}
